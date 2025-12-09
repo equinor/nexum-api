@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional, TYPE_CHECKING
 from sqlalchemy import ForeignKey, FLOAT
-from constants import DatabaseConstants
+from src.constants import DatabaseConstants
 from src.models.guid import GUID
 from sqlalchemy.orm import (
     Mapped,
