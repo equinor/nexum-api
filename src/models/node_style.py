@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional, TYPE_CHECKING
 from sqlalchemy import ForeignKey, FLOAT
+from src.constants import DatabaseConstants
 from src.models.guid import GUID
 from sqlalchemy.orm import (
     Mapped,
@@ -19,8 +20,8 @@ class NodeStyle(Base, BaseEntity):
     id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True)
     node_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("node.id"), index=True)
 
-    x_position: Mapped[float] = mapped_column(FLOAT(precision=14))
-    y_position: Mapped[float] = mapped_column(FLOAT(precision=14))
+    x_position: Mapped[float] = mapped_column(FLOAT(precision=DatabaseConstants.FLOAT_PRECISION.value))
+    y_position: Mapped[float] = mapped_column(FLOAT(precision=DatabaseConstants.FLOAT_PRECISION.value))
 
     node: Mapped["Node"] = relationship("Node", back_populates="node_style")
 
