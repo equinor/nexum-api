@@ -2,6 +2,7 @@ import uuid
 from typing import Optional, TYPE_CHECKING
 from sqlalchemy import ForeignKey, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from src.constants import DatabaseConstants
 from src.models.base import Base
 from src.models.base_entity import BaseEntity
 from src.models.guid import GUID
@@ -39,7 +40,7 @@ class DiscreteProbability(Base, BaseEntity):
     id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True)
     outcome_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("outcome.id", ondelete="CASCADE"), index=True)
     uncertainty_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("uncertainty.id"), index=True) # cascade delete handled in uncertainty model
-    probability: Mapped[Optional[float]] = mapped_column(Float(precision=53), default=None, nullable=True)
+    probability: Mapped[Optional[float]] = mapped_column(Float(precision=DatabaseConstants.FLOAT_PRECISION.value), default=None, nullable=True)
 
     outcome: Mapped["Outcome"] = relationship("Outcome", foreign_keys=[outcome_id])
     uncertainty: Mapped["Uncertainty"] = relationship("Uncertainty", back_populates="discrete_probabilities", foreign_keys=[uncertainty_id])
