@@ -42,6 +42,10 @@ class DecisionHierarchy(str, Enum):
 class DatabaseConstants(int, Enum):
     MAX_SHORT_STRING_LENGTH = 60
     MAX_LONG_STRING_LENGTH = 600
+    FLOAT_PRECISION = 53
+
+class DtoConstants(int, Enum):
+    DECIMAL_PLACES = 14
 
 class NodeStates(str, Enum):
     OPTION = "option"

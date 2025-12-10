@@ -118,8 +118,8 @@ class DecisionTreeGraph():
 
             for dto in discrete_prob_dtos:
                 if dto.probability is not None:
-                    probability_dto = ProbabilityDto(outcome_name=self.outcomes_lookup[dto.child_outcome_id.__str__()],
-                                                     outcome_id=dto.child_outcome_id,
+                    probability_dto = ProbabilityDto(outcome_name=self.outcomes_lookup[dto.outcome_id.__str__()],
+                                                     outcome_id=dto.outcome_id,
                                                      probability_value=dto.probability,
                                                      discrete_probability_id=dto.id)
                     probability_dtos.append(probability_dto)
