@@ -3,6 +3,7 @@ from typing import Optional, TYPE_CHECKING
 from sqlalchemy import ForeignKey, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.base import Base
+from src.constants import DatabaseConstants
 from src.models.base_entity import BaseEntity
 from src.models.guid import GUID
 if TYPE_CHECKING:
@@ -41,7 +42,7 @@ class DiscreteUtility(Base, BaseEntity):
 
     value_metric_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("value_metric.id", ondelete="CASCADE"), index=True)
     utility_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("utility.id"), index=True) # cascade delete handled in utility model
-    utility_value: Mapped[Optional[float]] = mapped_column(Float(precision=14), default=None, nullable=True)
+    utility_value: Mapped[Optional[float]] = mapped_column(Float(precision=DatabaseConstants.FLOAT_PRECISION.value), default=None, nullable=True)
 
     value_metric: Mapped["ValueMetric"] = relationship("ValueMetric", foreign_keys=[value_metric_id])
     utility: Mapped["Utility"] = relationship("Utility", back_populates="discrete_utilities", foreign_keys=[utility_id])
