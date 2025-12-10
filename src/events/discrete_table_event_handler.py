@@ -28,7 +28,7 @@ from src.utils.session_info_handler import (
 )
 
 class DiscreteTableEventHandler:
-    """Handles events that require discrete probability table recalculation."""
+    """Handles events that require discrete table recalculation."""
 
     subscribed_entities_delete = [
         Edge, 
@@ -39,7 +39,7 @@ class DiscreteTableEventHandler:
     subscribed_entities_new = [Edge, Option, Outcome]
 
     def process_session_changes_before_flush(self, session: Session) -> None:
-        """Process all session changes and determine which uncertainties need recalculation."""
+        """Process all session changes and determine which tables need recalculation."""
         # Filter to only subscribed entities
         subscribed_dirty = [
             entity for entity in session.dirty
@@ -77,7 +77,7 @@ class DiscreteTableEventHandler:
         SessionInfoHandler.update_session_info(session, session_info)
 
     def process_session_changes_after_flush(self, session: Session) -> None:
-        """Process all session changes and determine which uncertainties need recalculation."""
+        """Process all session changes and determine which tables need recalculation."""
         # Filter to only subscribed entities
         subscribed_new = [
             entity for entity in session.new 
@@ -104,7 +104,7 @@ class DiscreteTableEventHandler:
         SessionInfoHandler.update_session_info(session, session_info)
     
     def _process_deletions(self, session: Session, deleted_entities: list[Any]) -> SessionInfo:
-        """Process deleted entities and find affected uncertainties."""
+        """Process deleted entities and find affected tables."""
         session_info = SessionInfo()
 
         discrete_utilities_to_delete: set[uuid.UUID] = set()
@@ -160,7 +160,7 @@ class DiscreteTableEventHandler:
         return session_info
     
     def _process_modifications(self, session: Session, modified_entities: list[Any]) -> SessionInfo:
-        """Process modified entities and find affected uncertainties."""
+        """Process modified entities and find affected tables."""
         session_info = SessionInfo()
         issues_to_search: set[uuid.UUID] = set()
         
@@ -190,7 +190,7 @@ class DiscreteTableEventHandler:
         return session_info
     
     def _process_additions(self, session: Session, new_entities: list[Any]) -> SessionInfo:
-        """Process new entities and find affected uncertainties."""
+        """Process new entities and find affected tables."""
         session_info = SessionInfo()
         
         added_edges: set[uuid.UUID] = set()
