@@ -79,7 +79,7 @@ class DiscreteProbability(Base, BaseEntity):
         return (
             self.id == other.id and
             self.uncertainty_id == other.uncertainty_id and
-            self.child_outcome_id == other.child_outcome_id and
+            self.outcome_id == other.outcome_id and
             self.probability == other.probability and
             len(self.parent_outcomes) == len(other.parent_outcomes) and
             len(self.parent_options) == len(other.parent_options) and

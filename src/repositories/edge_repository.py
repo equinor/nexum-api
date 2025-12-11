@@ -33,16 +33,11 @@ class EdgeRepository(BaseRepository[Edge, uuid.UUID]):
 def find_effected_session_entities(session: Session, ids: set[uuid.UUID]) -> SessionInfo:
     session_info = SessionInfo()
     query = select(Edge).where(Edge.id.in_(ids)).options(
-        joinedload(Edge.tail_node).options(
-            joinedload(Node.issue).options(
-                joinedload(Issue.uncertainty),
-                joinedload(Issue.decision)
-            )
-        ),
+        joinedload(Edge.tail_node),
         joinedload(Edge.head_node).options(
             joinedload(Node.issue).options(
                 joinedload(Issue.uncertainty),
-                joinedload(Issue.decision)
+                joinedload(Issue.utility),
             )
         )
     )
