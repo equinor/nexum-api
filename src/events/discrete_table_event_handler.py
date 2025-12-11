@@ -56,10 +56,15 @@ class DiscreteTableEventHandler:
         session_info = SessionInfoHandler.get_session_info(session)
         
         # Process changes in order of dependency
-        session_info = SessionInfoHandler.add_to_session_info(session_info,
+      if subscribed_deleted:
+        session_info = SessionInfoHandler.add_to_session_info(
+            session_info,
             self._process_deletions(session, subscribed_deleted)
         )
-        session_info = SessionInfoHandler.add_to_session_info(session_info,
+    
+    if subscribed_dirty:
+        session_info = SessionInfoHandler.add_to_session_info(
+            session_info,
             self._process_modifications(session, subscribed_dirty)
         )
 
