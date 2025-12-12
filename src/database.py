@@ -73,6 +73,7 @@ async def ensure_default_value_metric_exists(session: AsyncSession):
             await session.delete(value_metric)
 
     if default_value_metric_id in [x.id for x in value_metrics]:
+        await session.commit()
         return
     
     # create default value metric

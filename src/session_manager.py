@@ -172,11 +172,12 @@ class SessionManager:
             try:
                 await validate_default_scenarios(session)
             except Exception as e:
-                print(e)
+                self._logger.error(f"Database start task {validate_default_scenarios.__name__} failed: {e}")
             try:
                 await ensure_default_value_metric_exists(session)
             except Exception as e:
-                print(e)
+                self._logger.error(f"Database start task {ensure_default_value_metric_exists.__name__} failed: {e}")
+
 
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Yield a database session with the correct schema set."""

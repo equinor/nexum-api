@@ -31,7 +31,7 @@ class Utility(Base, BaseEntity):
     def __init__(self, id: uuid.UUID, issue_id: uuid.UUID, discrete_utilities: Optional[list["DiscreteUtility"]] = None):
         self.id = id
         self.issue_id = issue_id
-        if discrete_utilities:
+        if discrete_utilities is not None:
             self.discrete_utilities=discrete_utilities
 
     def __eq__(self, other: object) -> bool:

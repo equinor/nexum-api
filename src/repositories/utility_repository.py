@@ -29,15 +29,6 @@ class UtilityRepository(BaseRepository[Utility, uuid.UUID]):
         await self.session.flush()
         return entities_to_update
 
-    async def clear_discrete_utility_tables(self, ids: list[uuid.UUID]):
-        
-        entities = await self.get(ids)
-
-        for entity in entities:
-            entity.discrete_utilities = []
-
-        await self.session.flush()
-
 def recalculate_discrete_utility_table(session: Session, id: uuid.UUID):
 
     query = (
@@ -97,7 +88,6 @@ def recalculate_discrete_utility_table(session: Session, id: uuid.UUID):
     # since the utility table dimensions are determined entirly from the parents if there are no parents the utility table is not defined 
     if len(parent_outcomes_list) == 0 and len(parent_options_list) == 0:
         entity.discrete_utilities = []
-        session.flush()
         return
     
     parent_combinations = list(product(*parent_outcomes_list, *parent_options_list))
@@ -122,5 +112,4 @@ def recalculate_discrete_utility_table(session: Session, id: uuid.UUID):
             )
         )
 
-    session.flush([entity])
     return
