@@ -35,7 +35,8 @@ class DiscreteTableEventHandler:
         DiscreteProbabilityParentOption, DiscreteProbabilityParentOutcome,
         DiscreteUtilityParentOption, DiscreteUtilityParentOutcome,
     ]
-    subscribed_entities_modified = [Issue, Uncertainty, Decision]
+    subscribed_entities_modified_before_flush = [Issue, Uncertainty, Decision, Edge]
+    subscribed_entities_modified_after_flush = [Edge]
     subscribed_entities_new = [Edge, Option, Outcome]
 
     def process_session_changes_before_flush(self, session: Session) -> None:
@@ -43,7 +44,7 @@ class DiscreteTableEventHandler:
         # Filter to only subscribed entities
         subscribed_dirty = [
             entity for entity in session.dirty
-            if any(isinstance(entity, entity_type) for entity_type in self.subscribed_entities_modified)
+            if any(isinstance(entity, entity_type) for entity_type in self.subscribed_entities_modified_before_flush)
         ]
         subscribed_deleted = [
             entity for entity in session.deleted
@@ -77,16 +78,26 @@ class DiscreteTableEventHandler:
             entity for entity in session.new 
             if any(isinstance(entity, entity_type) for entity_type in self.subscribed_entities_new)
         ]
-        
-        if not subscribed_new:
-            return
+
+        # special case for if edge has changed, because it is the only entity that needs to be checked for modifications after flush
+        subscribed_dirty = [
+            entity for entity in session.dirty
+            if any(isinstance(entity, entity_type) for entity_type in self.subscribed_entities_modified_after_flush)
+        ]
         
         session_info = SessionInfoHandler.get_session_info(session)
+
+        if subscribed_new:
+            # Process changes in order of dependency
+            session_info = SessionInfoHandler.add_to_session_info(session_info,
+                self._process_additions(session, subscribed_new)
+            )
         
-        # Process changes in order of dependency
-        session_info = SessionInfoHandler.add_to_session_info(session_info,
-            self._process_additions(session, subscribed_new)
-        )
+        if subscribed_dirty:
+            session_info = SessionInfoHandler.add_to_session_info(
+                session_info,
+                self._process_modifications(session, subscribed_dirty)
+            )
         
         SessionInfoHandler.update_session_info(session, session_info)
     
@@ -150,9 +161,12 @@ class DiscreteTableEventHandler:
         """Process modified entities and find affected tables."""
         session_info = SessionInfo()
         issues_to_search: set[uuid.UUID] = set()
+        changed_edges: set[uuid.UUID] = set()
         
         for modified_entity in modified_entities:
-            if isinstance(modified_entity, Issue):
+            if isinstance(modified_entity, Edge):
+                changed_edges.add(modified_entity.id)
+            elif isinstance(modified_entity, Issue):
                 if self._has_boundary_change(modified_entity):
                     issues_to_search.add(modified_entity.id)
                 
@@ -173,7 +187,11 @@ class DiscreteTableEventHandler:
             session_info = SessionInfoHandler.add_to_session_info(session_info,
                 issue_repository.find_effected_session_entities(session, issues_to_search)
             )
-        
+        if changed_edges:
+            session_info = SessionInfoHandler.add_to_session_info(session_info,
+                edge_repository.find_effected_session_entities(session, changed_edges)
+            )
+
         return session_info
     
     def _process_additions(self, session: Session, new_entities: list[Any]) -> SessionInfo:
