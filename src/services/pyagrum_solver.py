@@ -51,7 +51,8 @@ class PyagrumSolver:
         self.add_nodes(issues)
         self.add_edges(edges)
         self.fill_cpts(issues)
-        self.add_utilities(issues)
+        self.add_virtual_utilities(issues)
+        self.fill_utilities(issues)
 
     def _sort_state_dtos(self, dtos: list[T]) -> list[T]:
         return sorted(dtos, key=lambda x: x.id.__str__())
@@ -132,6 +133,17 @@ class PyagrumSolver:
                 )
             )
             self.add_to_lookup(issue, node_id)
+        
+        if issue.type == Type.UTILITY:
+            assert issue.utility is not None
+            node_id = self.diagram.addUtilityNode( # type: ignore
+                gum.LabelizedVariable(
+                    f"{issue.id.__str__()}",
+                    f"{issue.id.__str__()}",
+                    1,
+                )
+            )
+            self.add_to_lookup(issue, node_id)
 
     def add_edge(self, edge: EdgeOutgoingDto):
         tail_id = self.node_lookup[edge.tail_node.issue_id.__str__()]
@@ -182,13 +194,23 @@ class PyagrumSolver:
         else: 
             return probabilities
 
-    def add_utility(self, issue: IssueOutgoingDto):
-        self.add_utility_node(issue)
-        self.add_virtual_utility_node(issue)
-
-    def add_utility_node(self, issue: IssueOutgoingDto):
+    def fill_utility_table(self, issue: IssueOutgoingDto):
         if issue.type in [Type.DECISION.value, Type.UNCERTAINTY.value]:
             return
+        assert issue.utility is not None
+
+        node_id = self.node_lookup[issue.id.__str__()]
+        parent_ids: list[int] = self.diagram.parents(node_id) # type: ignore
+        parent_labels = [self.diagram.variable(pid).labels() for pid in parent_ids] # type: ignore
+
+        # Build all parent state combinations
+        parent_combinations = list(product(*parent_labels))
+        for combination in parent_combinations:
+            for utility in issue.utility.discrete_utilities:
+                parents = [str(option_id) for option_id in utility.parent_option_ids] + [str(outcome_id) for outcome_id in utility.parent_outcome_ids]
+                if all([x in parents for x in combination]):
+                    assign = {self.diagram.variable(parent_id).name(): state for parent_id, state in zip(parent_ids, combination)} # type: ignore
+                    self.diagram.utility(node_id)[assign] = utility.utility_value
         
     def add_virtual_utility_node(self, issue: IssueOutgoingDto):
         if issue.type == Type.UTILITY.value:
@@ -220,5 +242,8 @@ class PyagrumSolver:
     def add_nodes(self, issues: list[IssueOutgoingDto]):
         [self.add_node(x) for x in issues]
 
-    def add_utilities(self, issues: list[IssueOutgoingDto]):
-        [self.add_utility(x) for x in issues]
+    def add_virtual_utilities(self, issues: list[IssueOutgoingDto]):
+        [self.add_virtual_utility_node(x) for x in issues]
+
+    def fill_utilities(self, issues: list[IssueOutgoingDto]):
+        [self.fill_utility_table(x) for x in issues]
