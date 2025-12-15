@@ -118,8 +118,7 @@ class ScenarioService:
         result = ScenarioMapper.to_populated_dtos(scenarios)
         return result
     
-    @staticmethod
-    def _remove_utilities_with_too_few_connections(issue_dtos: list[IssueOutgoingDto], edge_dtos: list[EdgeOutgoingDto], minimum_number_connections: int = 2):
+    def _remove_utilities_with_too_few_connections(self, issue_dtos: list[IssueOutgoingDto], edge_dtos: list[EdgeOutgoingDto], minimum_number_connections: int = 2):
         utility_issues = [issue for issue in issue_dtos if issue.type == Type.UTILITY.value]
         utilities_to_remove: list[IssueOutgoingDto] = []
         edges_to_remove: list[EdgeOutgoingDto] = []
@@ -160,7 +159,7 @@ class ScenarioService:
         issue_dtos = IssueMapper.to_outgoing_dtos(issues_entities)
         edge_dtos = EdgeMapper.to_outgoing_dtos(edges_entities)
 
-        self._remove_utilities_with_to_few_connections(issue_dtos, edge_dtos)
+        self._remove_utilities_with_too_few_connections(issue_dtos, edge_dtos)
 
         # Run influence diagram creation and validation in a separate thread
         influence_diagram = await asyncio.to_thread(
