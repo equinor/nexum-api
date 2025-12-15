@@ -51,17 +51,6 @@ class DiscreteTableEventHandler:
         ]
         
         if not (subscribed_dirty or subscribed_deleted):
-            # Filter to only subscribed entities
-            subscribed_dirty = [
-                entity for entity in session.dirty
-                if any(isinstance(entity, entity_type) for entity_type in self.subscribed_entities_modified)
-            ]
-            subscribed_deleted = [
-                entity for entity in session.deleted
-                if any(isinstance(entity, entity_type) for entity_type in self.subscribed_entities_delete)
-            ]
-        
-        if not (subscribed_dirty or subscribed_deleted):
             return
 
         session_info = SessionInfoHandler.get_session_info(session)
@@ -88,13 +77,6 @@ class DiscreteTableEventHandler:
             entity for entity in session.new 
             if any(isinstance(entity, entity_type) for entity_type in self.subscribed_entities_new)
         ]
-        
-        if not subscribed_new:
-            # Filter to only subscribed entities
-            subscribed_new = [
-                entity for entity in session.new 
-                if any(isinstance(entity, entity_type) for entity_type in self.subscribed_entities_new)
-            ]
         
         if not subscribed_new:
             return
