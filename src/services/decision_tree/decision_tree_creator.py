@@ -247,14 +247,7 @@ class DecisionTreeCreator():
 
     async def calculate_partial_order_issues(self) -> List[uuid.UUID]:
         partial_order = await self.calculate_partial_order()
-
-        # Using a list comprehension with error handling
-        partial_order_issues : list[uuid.UUID] = []
-        for id in partial_order:
-            tree_node = self.treenode_lookup[id.__str__()]
-            if tree_node and tree_node.issue:
-                partial_order_issues.append(tree_node.issue.id)
-
+        partial_order_issues = [self.treenode_lookup[id.__str__()].issue.id for id in partial_order]
         return partial_order_issues
 
     async def calculate_partial_order(self) -> list[uuid.UUID]:
