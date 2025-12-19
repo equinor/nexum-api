@@ -51,5 +51,6 @@ class UncertaintyService:
         result = UncertaintyMapper.to_outgoing_dtos(decisions)
         return result
 
-    async def recalculate_discrete_probability_table_async(self, session: AsyncSession, id: uuid.UUID):
-        await UncertaintyRepository(session).recalculate_discrete_probability_table_async(id)
+    async def recalculate_discrete_probability_table_async(self, session: AsyncSession, id: uuid.UUID) -> Optional[UncertaintyOutgoingDto]:
+        entity = await UncertaintyRepository(session).recalculate_discrete_probability_table_async(id)
+        return UncertaintyMapper.to_outgoing_dto(entity) if entity is not None else None

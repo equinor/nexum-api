@@ -92,8 +92,10 @@ async def remake_probability_table(
     session: AsyncSession = Depends(get_db),
 ):
     try:
-        await uncertainty_service.recalculate_discrete_probability_table_async(session, id)
+        dto = await uncertainty_service.recalculate_discrete_probability_table_async(session, id)
         await session.commit()
-        return Response(None, status_code=204)
+        if dto is None:
+            return HTTPException(status_code=404)
+        return Response(status_code=204)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

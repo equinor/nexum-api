@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from itertools import product, chain
 from src.models import Uncertainty, DiscreteProbability, DiscreteProbabilityParentOption, DiscreteProbabilityParentOutcome
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,7 +43,7 @@ def uncertainty_table_load_query(id: uuid.UUID):
         )
     )
     
-def perform_recalc(entity: Uncertainty):
+def perform_recalc(entity: Uncertainty) -> Uncertainty:
     entity.discrete_probabilities = []
 
     parent_outcomes_list: List[List[uuid.UUID]] = []
@@ -68,7 +68,7 @@ def perform_recalc(entity: Uncertainty):
     # check if no valid edges and thus cannot be empty, but should be 1 row
     if len(parent_outcomes_list) == 0 and len(parent_options_list) == 0:
         entity.discrete_probabilities = [DiscreteProbability(id = uuid.uuid4(), uncertainty_id=entity.id, outcome_id=x.id, probability=0) for x in entity.outcomes]
-        return
+        return entity
     
     parent_combinations = list(product(*parent_outcomes_list, *parent_options_list))
     # get all options and outcomes to filter on later
@@ -91,7 +91,7 @@ def perform_recalc(entity: Uncertainty):
                 )
             )
 
-    return
+    return entity
 
 
 class UncertaintyRepository(BaseRepository[Uncertainty, uuid.UUID]):
@@ -133,11 +133,11 @@ class UncertaintyRepository(BaseRepository[Uncertainty, uuid.UUID]):
         perform_recalc(entity)    
         await self.session.flush()
 
-def recalculate_discrete_probability_table(session: Session, id: uuid.UUID):
+def recalculate_discrete_probability_table(session: Session, id: uuid.UUID) -> Optional[Uncertainty]:
 
     query = uncertainty_table_load_query(id)
 
     entity: Uncertainty = (session.scalars(query)).unique().first()
-    if entity is None:
-        return
-    perform_recalc(entity)
+    if entity is not None:
+        entity = perform_recalc(entity)
+    return entity

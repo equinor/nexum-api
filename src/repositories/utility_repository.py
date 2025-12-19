@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from itertools import product, chain
 from src.models.utility import Utility
 from src.models import DiscreteUtility, DiscreteUtilityParentOption, DiscreteUtilityParentOutcome
@@ -42,7 +42,7 @@ def utility_table_load_query(id: uuid.UUID):
             )
         )
 
-def perform_recalc(entity: Utility):
+def perform_recalc(entity: Utility) -> Utility:
     entity.discrete_utilities = []
 
     parent_outcomes_list: List[List[uuid.UUID]] = []
@@ -67,7 +67,7 @@ def perform_recalc(entity: Utility):
     # since the utility table dimensions are determined entirly from the parents if there are no parents the utility table is not defined 
     if len(parent_outcomes_list) == 0 and len(parent_options_list) == 0:
         entity.discrete_utilities = []
-        return
+        return entity
     
     parent_combinations = list(product(*parent_outcomes_list, *parent_options_list))
     # get all options and outcomes to filter on later
@@ -91,7 +91,7 @@ def perform_recalc(entity: Utility):
             )
         )
 
-    return
+    return entity
 
 
 class UtilityRepository(BaseRepository[Utility, uuid.UUID]):
@@ -117,11 +117,11 @@ class UtilityRepository(BaseRepository[Utility, uuid.UUID]):
         perform_recalc(entity)
         await self.session.flush()
 
-def recalculate_discrete_utility_table(session: Session, id: uuid.UUID):
+def recalculate_discrete_utility_table(session: Session, id: uuid.UUID) -> Optional[Utility]:
 
     query = utility_table_load_query(id)
 
-    entity: Utility = (session.scalars(query)).unique().first()
-    if entity is None:
-        return
-    perform_recalc(entity)
+    entity: Optional[Utility] = (session.scalars(query)).unique().first()
+    if entity is not None:
+        entity = perform_recalc(entity)
+    return entity
