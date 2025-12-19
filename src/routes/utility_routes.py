@@ -81,3 +81,16 @@ async def update_utilities(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/utilities/remake-utility-table")
+async def remake_probability_table(
+    ids: list[uuid.UUID] = Query([]),
+    utility_service: UtilityService = Depends(get_utility_service),
+    session: AsyncSession = Depends(get_db),
+):
+    try:
+        await utility_service.recalculate_discrete_utility_tables_async(session, ids)
+        await session.commit()
+        return
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
