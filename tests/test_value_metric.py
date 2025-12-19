@@ -7,6 +7,7 @@ from tests.utils import (
 )
 from src.dtos.value_metric_dtos import ValueMetricIncomingDto, ValueMetricOutgoingDto
 from src.seed_database import GenerateUuid
+from src.constants import default_value_metric_id
 
 
 @pytest.mark.asyncio
@@ -19,7 +20,7 @@ async def test_get_value_metrics(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_value_metric(client: AsyncClient):
-    response = await client.get(f"/value-metrics/{GenerateUuid.as_string(20)}")
+    response = await client.get(f"/value-metrics/{str(default_value_metric_id)}")
     assert response.status_code == 200, f"Response content: {response.content}"
 
     parse_response_to_dto_test(response, ValueMetricOutgoingDto)
@@ -30,7 +31,7 @@ async def test_update_value_metric(client: AsyncClient):
     new_name = str(uuid4())
     payload = [
         ValueMetricIncomingDto(
-            id=GenerateUuid.as_uuid(1), issue_id=GenerateUuid.as_uuid(1), name=new_name
+            id=default_value_metric_id, name=new_name
         ).model_dump(mode="json")
     ]
 

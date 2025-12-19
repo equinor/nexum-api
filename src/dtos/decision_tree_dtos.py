@@ -31,3 +31,7 @@ class TreeNodeDto(BaseModel):
 class DecisionTreeDTO(BaseModel):
     tree_node: TreeNodeDto
     children: Optional[List["DecisionTreeDTO"]] = None
+
+class PartialOrderDTO(BaseModel):
+    # list of issue ids
+    issue_ids: Optional[List[uuid.UUID]] = None

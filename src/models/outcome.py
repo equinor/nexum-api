@@ -13,6 +13,7 @@ from src.constants import DatabaseConstants
 
 if TYPE_CHECKING:
     from src.models.discrete_probability import DiscreteProbabilityParentOutcome
+    from src.models.discrete_utility import DiscreteUtilityParentOutcome
 
 class Outcome(Base, BaseEntity):
     __tablename__ = "outcome"
@@ -29,6 +30,12 @@ class Outcome(Base, BaseEntity):
 
     discrete_probability_parent_outcomes: Mapped[list["DiscreteProbabilityParentOutcome"]] = relationship(
         "DiscreteProbabilityParentOutcome",
+        back_populates="parent_outcome",
+        cascade="all, delete-orphan",
+    )
+
+    discrete_utility_parent_outcomes: Mapped[list["DiscreteUtilityParentOutcome"]] = relationship(
+        "DiscreteUtilityParentOutcome",
         back_populates="parent_outcome",
         cascade="all, delete-orphan",
     )

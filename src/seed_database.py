@@ -14,16 +14,17 @@ from src.models import (
     Opportunity,
     Uncertainty,
     Utility,
-    ValueMetric,
     Decision,
     Edge,
     Option,
     Outcome,
+    ValueMetric,
     DiscreteProbability,
     DiscreteProbabilityParentOption,
+    DiscreteUtility,
 )
 from typing import Protocol, TypeVar, Any, Union, Dict, Tuple, List
-from src.constants import Type, Boundary, ObjectiveTypes
+from src.constants import Type, Boundary, ObjectiveTypes, default_value_metric_id
 
 
 class AuditableEntityProtocol(Protocol):
@@ -123,7 +124,7 @@ def create_utility_issue(
     order: int,
 ) -> list[Union[Utility, Node, NodeStyle, Issue]]:
     """Helper function to create an utility issue and its related entities."""
-    utility = Utility(id=utility_id, values="", issue_id=issue_id)
+    utility = Utility(id=utility_id, issue_id=issue_id)
     node = Node(
         id=issue_id,
         scenario_id=scenario_id,
@@ -737,7 +738,8 @@ async def seed_database(
 ):
     user1 = User(id=1, name=str("test_user_1"), azure_id=GenerateUuid.as_string(15))
     user2 = User(id=2, name=str("test_user_2"), azure_id=GenerateUuid.as_string(12))
-    entities: list[Any] = [user1, user2]
+    default_value_metric = ValueMetric(id=default_value_metric_id, name="value")
+    entities: list[Any] = [user1, user2, default_value_metric]
     for project_index in range(num_projects):
         user = user1 if project_index % 2 == 0 else user2
         # Create a project with a UUID name and description
@@ -870,13 +872,21 @@ async def seed_database(
                 )
                 entities.append(uncertainty)
 
-                utility = Utility(id=issue_node_id, issue_id=issue_node_id, values="200,150")
-                entities.append(utility)
-
-                value_metric = ValueMetric(
-                    id=issue_node_id, issue_id=issue_node_id, name=str(uuid4())
+                utility = Utility(
+                    id=issue_node_id, 
+                    issue_id=issue_node_id,
+                    discrete_utilities=[
+                        DiscreteUtility(
+                            id=issue_node_id,
+                            utility_id=issue_node_id,
+                            value_metric_id=default_value_metric_id,
+                            utility_value=90,
+                            parent_options=[],
+                            parent_outcomes=[],
+                        )
+                    ]
                 )
-                entities.append(value_metric)
+                entities.append(utility)
 
                 node = Node(
                     id=issue_node_id,

@@ -8,9 +8,11 @@ from src.models import (
     Scenario,
     Decision,
     Uncertainty,
+    Utility,
     ProjectRole,
     User,
     DiscreteProbability,
+    DiscreteUtility,
 )
 
 # Use joinedload for single relationships
@@ -31,6 +33,16 @@ class QueryExtensions:
                 selectinload(DiscreteProbability.parent_outcomes),
             )
         ]
+    
+    @staticmethod
+    def load_utility_with_relationships() -> list[_AbstractLoad]:
+        return [
+            selectinload(Utility.discrete_utilities).options(
+                joinedload(DiscreteUtility.value_metric),
+                selectinload(DiscreteUtility.parent_options),
+                selectinload(DiscreteUtility.parent_outcomes),
+            )
+        ]
 
     @staticmethod
     def load_discrete_probability_with_relationships() -> list[_AbstractLoad]:
@@ -40,6 +52,15 @@ class QueryExtensions:
             selectinload(DiscreteProbability.parent_options),
             selectinload(DiscreteProbability.parent_outcomes),
         ]
+    
+    @staticmethod
+    def load_discrete_utility_with_relationships() -> list[_AbstractLoad]:
+        return [
+            joinedload(DiscreteUtility.value_metric),
+            joinedload(DiscreteUtility.utility),
+            selectinload(DiscreteUtility.parent_options),
+            selectinload(DiscreteUtility.parent_outcomes),
+        ]
 
     @staticmethod
     def load_issue_with_relationships() -> list[_AbstractLoad]:
@@ -48,8 +69,9 @@ class QueryExtensions:
             joinedload(Issue.uncertainty).options(
                 *QueryExtensions.load_uncertainty_with_relationships()
             ),
-            joinedload(Issue.utility),
-            joinedload(Issue.value_metric),
+            joinedload(Issue.utility).options(
+                *QueryExtensions.load_utility_with_relationships(),
+            ),
             joinedload(Issue.node).options(joinedload(Node.node_style)),
         ]
 
@@ -58,13 +80,14 @@ class QueryExtensions:
         return [
             joinedload(Node.issue).options(
                 joinedload(Issue.decision).options(
-                    *QueryExtensions.load_decision_with_relationships()
+                    *QueryExtensions.load_decision_with_relationships(),
                 ),
                 joinedload(Issue.uncertainty).options(
-                    *QueryExtensions.load_uncertainty_with_relationships()
+                    *QueryExtensions.load_uncertainty_with_relationships(),
                 ),
-                joinedload(Issue.utility),
-                joinedload(Issue.value_metric),
+                joinedload(Issue.utility).options(
+                    *QueryExtensions.load_utility_with_relationships(),
+                ),
             ),
             joinedload(Node.node_style),
         ]

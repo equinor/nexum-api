@@ -25,10 +25,6 @@ from src.dtos.utility_dtos import (
     UtilityMapper,
     UtilityIncomingDto,
 )
-from src.dtos.value_metric_dtos import (
-    ValueMetricMapper,
-    ValueMetricIncomingDto,
-)
 from src.dtos.user_dtos import (
     UserIncomingDto,
     UserMapper,
@@ -38,7 +34,6 @@ from src.repositories.node_repository import NodeRepository
 from src.repositories.decision_repository import DecisionRepository
 from src.repositories.uncertainty_repository import UncertaintyRepository
 from src.repositories.utility_repository import UtilityRepository
-from src.repositories.value_metric_repository import ValueMetricRepository
 from src.repositories.user_repository import UserRepository
 from src.models.filters.issues_filter import IssueFilter
 
@@ -52,13 +47,11 @@ class IssueService:
         list[Optional[DecisionIncomingDto]],
         list[Optional[UncertaintyIncomingDto]],
         list[Optional[UtilityIncomingDto]],
-        list[Optional[ValueMetricIncomingDto]],
     ]:
         nodes: list[NodeIncomingDto] = []
         decisions: list[Optional[DecisionIncomingDto]] = []
         uncertainties: list[Optional[UncertaintyIncomingDto]] = []
         utilities: list[Optional[UtilityIncomingDto]] = []
-        value_metrics: list[Optional[ValueMetricIncomingDto]] = []
         for dto in dtos:
             if dto.node:
                 nodes.append(dto.node)
@@ -76,13 +69,11 @@ class IssueService:
             decisions.append(dto.decision)
             uncertainties.append(dto.uncertainty)
             utilities.append(dto.utility)
-            value_metrics.append(dto.value_metric)
             dto.node = None
             dto.decision = None
             dto.uncertainty = None
             dto.utility = None
-            dto.value_metric = None
-        return dtos, nodes, decisions, uncertainties, utilities, value_metrics
+        return dtos, nodes, decisions, uncertainties, utilities
 
     async def _create_related_entities(
         self,
@@ -92,7 +83,6 @@ class IssueService:
         decision_dto: Optional[DecisionIncomingDto],
         uncertainty_dto: Optional[UncertaintyIncomingDto],
         utility_dto: Optional[UtilityIncomingDto],
-        value_metric_dto: Optional[ValueMetricIncomingDto],
     ):
         node_dto.issue_id = entity.id
         node = await NodeRepository(session).create_single(NodeMapper.to_entity(node_dto))
@@ -115,12 +105,6 @@ class IssueService:
                 UtilityMapper.to_entity(utility_dto)
             )
             entity.utility = utility
-        if value_metric_dto:
-            value_metric_dto.issue_id = entity.id
-            value_metric = await ValueMetricRepository(session).create_single(
-                ValueMetricMapper.to_entity(value_metric_dto)
-            )
-            entity.value_metric = value_metric
         return entity
 
     async def create(
@@ -137,7 +121,6 @@ class IssueService:
             decision_dtos,
             uncertainty_dtos,
             utility_dtos,
-            value_metric_dtos,
         ) = self._extract_related_entities(dtos)
         entities: list[Issue] = await IssueRepository(session).create(
             IssueMapper.to_entities(dtos, user.id)
@@ -149,14 +132,12 @@ class IssueService:
             decision_dto,
             uncertainty_dto,
             utility_dto,
-            value_metric_dto,
         ) in zip(
             entities,
             node_dtos,
             decision_dtos,
             uncertainty_dtos,
             utility_dtos,
-            value_metric_dtos,
         ):
             entity = await self._create_related_entities(
                 session,
@@ -165,7 +146,6 @@ class IssueService:
                 decision_dto,
                 uncertainty_dto,
                 utility_dto,
-                value_metric_dto,
             )
         result: list[IssueOutgoingDto] = IssueMapper.to_outgoing_dtos(entities)
         return result

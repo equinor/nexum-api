@@ -18,11 +18,6 @@ from src.dtos.utility_dtos import (
     UtilityIncomingDto,
     UtilityOutgoingDto,
 )
-from src.dtos.value_metric_dtos import (
-    ValueMetricMapper,
-    ValueMetricOutgoingDto,
-    ValueMetricIncomingDto,
-)
 from src.dtos.node_dtos import (
     NodeMapper,
     NodeIncomingDto,
@@ -52,7 +47,6 @@ class IssueIncomingDto(IssueDto):
     decision: Optional[DecisionIncomingDto]
     uncertainty: Optional[UncertaintyIncomingDto]
     utility: Optional[UtilityIncomingDto]
-    value_metric: Optional[ValueMetricIncomingDto]
 
 
 class IssueOutgoingDto(IssueDto):
@@ -62,7 +56,6 @@ class IssueOutgoingDto(IssueDto):
     decision: Optional[DecisionOutgoingDto]
     uncertainty: Optional[UncertaintyOutgoingDto]
     utility: Optional[UtilityOutgoingDto]
-    value_metric: Optional[ValueMetricOutgoingDto]
 
 
 class IssueViaNodeOutgoingDto(IssueDto):
@@ -71,7 +64,6 @@ class IssueViaNodeOutgoingDto(IssueDto):
     decision: Optional[DecisionOutgoingDto]
     uncertainty: Optional[UncertaintyOutgoingDto]
     utility: Optional[UtilityOutgoingDto]
-    value_metric: Optional[ValueMetricOutgoingDto]
 
 
 class IssueMapper:
@@ -94,9 +86,6 @@ class IssueMapper:
             if entity.uncertainty
             else None,
             utility=UtilityMapper.to_outgoing_dto(entity.utility) if entity.utility else None,
-            value_metric=ValueMetricMapper.to_outgoing_dto(entity.value_metric)
-            if entity.value_metric
-            else None,
         )
 
     @staticmethod
@@ -117,9 +106,6 @@ class IssueMapper:
             if entity.uncertainty
             else None,
             utility=UtilityMapper.to_outgoing_dto(entity.utility) if entity.utility else None,
-            value_metric=ValueMetricMapper.to_outgoing_dto(entity.value_metric)
-            if entity.value_metric
-            else None,
         )
 
     @staticmethod
@@ -138,9 +124,6 @@ class IssueMapper:
             decision=DecisionMapper.to_entity(dto.decision) if dto.decision else None,
             uncertainty=UncertaintyMapper.to_entity(dto.uncertainty) if dto.uncertainty else None,
             utility=UtilityMapper.to_entity(dto.utility) if dto.utility else None,
-            value_metric=ValueMetricMapper.to_entity(dto.value_metric)
-            if dto.value_metric
-            else None,
         )
 
     @staticmethod

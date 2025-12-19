@@ -1,3 +1,4 @@
+import uuid
 from enum import Enum
 
 
@@ -5,7 +6,6 @@ class Type(str, Enum):
     UNASSIGNED = "Unassigned"
     DECISION = "Decision"
     UNCERTAINTY = "Uncertainty"
-    VALUE_METRIC = "Value Metric"
     FACT = "Fact"
     UTILITY = "Utility"
 
@@ -17,6 +17,7 @@ class ObjectiveTypes(str, Enum):
 
 
 class DepricatedIssueTypes(str, Enum):
+    VALUE_METRIC = "Value Metric"
     UNDECIDED = "Undecided"
     OTHER = "Other"
     ACTION_ITEM = "Action Item"
@@ -41,6 +42,10 @@ class DecisionHierarchy(str, Enum):
 class DatabaseConstants(int, Enum):
     MAX_SHORT_STRING_LENGTH = 60
     MAX_LONG_STRING_LENGTH = 600
+    FLOAT_PRECISION = 53
+
+class DtoConstants(int, Enum):
+    DECIMAL_PLACES = 14
 
 class NodeStates(str, Enum):
     OPTION = "option"
@@ -80,3 +85,5 @@ class SwaggerDocumentationConstants:
 
 class PageSize:
     DEFAULT: int = 1000000
+
+default_value_metric_id = uuid.uuid5(uuid.NAMESPACE_DNS, 'default value metric')

@@ -7,6 +7,7 @@ from src.repositories.base_repository import BaseRepository
 from src.repositories.query_extensions import QueryExtensions
 from src.constants import Type
 from src.models import Issue, Node
+from src.utils.session_info_handler import SessionInfo
 
 class EdgeRepository(BaseRepository[Edge, uuid.UUID]):
     def __init__(self, session: AsyncSession):
@@ -29,30 +30,25 @@ class EdgeRepository(BaseRepository[Edge, uuid.UUID]):
         await self.session.flush()
         return entities_to_update
 
-def find_effected_uncertainties(session: Session, ids: set[uuid.UUID]) -> set[uuid.UUID]:
-    uncertainty_ids: set[uuid.UUID] = set()
+def find_effected_session_entities(session: Session, ids: set[uuid.UUID]) -> SessionInfo:
+    session_info = SessionInfo()
     query = select(Edge).where(Edge.id.in_(ids)).options(
-        joinedload(Edge.tail_node).options(
-            joinedload(Node.issue).options(
-                joinedload(Issue.uncertainty),
-                joinedload(Issue.decision)
-            )
-        ),
+        joinedload(Edge.tail_node),
         joinedload(Edge.head_node).options(
             joinedload(Node.issue).options(
                 joinedload(Issue.uncertainty),
-                joinedload(Issue.decision)
+                joinedload(Issue.utility),
             )
         )
     )
     entities = list((session.scalars(query)).unique().all())
 
     for entity in entities:
-        if (
-            entity.tail_node.issue.type in [Type.UNCERTAINTY.value, Type.DECISION.value] and 
-            entity.head_node.issue.type == Type.UNCERTAINTY.value and 
-            entity.head_node.issue.uncertainty
-        ):
-            uncertainty_ids.add(entity.head_node.issue.uncertainty.id)
+        if (entity.head_node.issue.type == Type.UNCERTAINTY.value and entity.head_node.issue.uncertainty):
+            session_info.affected_uncertainties.add(entity.head_node.issue.uncertainty.id)
 
-    return uncertainty_ids
+        if (entity.head_node.issue.type == Type.UTILITY.value and entity.head_node.issue.utility):
+            session_info.affected_utilities.add(entity.head_node.issue.utility.id)
+
+
+    return session_info

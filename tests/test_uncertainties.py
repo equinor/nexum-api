@@ -56,7 +56,7 @@ async def test_update_probability(client: AsyncClient):
     prob_to_update = uncertainty.discrete_probabilities[0]
 
     updated_prob = DiscreteProbabilityIncomingDto(
-        id = uuid.uuid4(),
+        id = prob_to_update.id,
         uncertainty_id=uncert_id,
         probability=new_probability,
         outcome_id= prob_to_update.outcome_id,

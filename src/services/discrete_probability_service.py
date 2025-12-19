@@ -16,7 +16,7 @@ class DiscreteProbabilityService:
         self, session: AsyncSession, dtos: list[DiscreteProbabilityIncomingDto]
     ) -> list[DiscreteProbabilityOutgoingDto]:
         entities: list[DiscreteProbability] = await DiscreteProbabilityRepository(session).create(
-            await DiscreteProbabilityMapper.to_entities(dtos, session)
+            DiscreteProbabilityMapper.to_entities(dtos)
         )
         # get the dtos while the entities are still connected to the session
         result: list[DiscreteProbabilityOutgoingDto] = DiscreteProbabilityMapper.to_outgoing_dtos(entities)
@@ -26,7 +26,7 @@ class DiscreteProbabilityService:
         self, session: AsyncSession, dtos: list[DiscreteProbabilityIncomingDto]
     ) -> list[DiscreteProbabilityOutgoingDto]:
         entities: list[DiscreteProbability] = await DiscreteProbabilityRepository(session).update(
-            await DiscreteProbabilityMapper.to_entities(dtos, session)
+            DiscreteProbabilityMapper.to_entities(dtos)
         )
         # get the dtos while the entities are still connected to the session
         result: list[DiscreteProbabilityOutgoingDto] = DiscreteProbabilityMapper.to_outgoing_dtos(entities)

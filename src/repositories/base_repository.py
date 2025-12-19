@@ -21,6 +21,7 @@ from odata_query.sqlalchemy.shorthand import apply_odata_query
 from src.constants import PageSize
 from src.models import (
     Uncertainty,
+    Utility,
     Decision,
     Node,
     NodeStyle,
@@ -144,6 +145,27 @@ class BaseRepository(Generic[T, IDType]):
                 if existing_dp.probability != incoming_dp.probability:
                     existing_dp.probability = incoming_dp.probability
             # If no match, ignore and leave existing discrete probability unchanged
+
+        return existing_entity
+    
+    async def _update_utility(self, incoming_entity: Utility, existing_entity: Utility) -> Utility:
+        """
+        Selective update of an existing Utility entity with data from an incoming Utility entity.
+        """
+        
+        if incoming_entity.issue_id:
+            existing_entity.issue_id = incoming_entity.issue_id
+
+        # Create a map of incoming discrete utilities by ID for efficient lookup
+        incoming_dps_by_id = {dp.id: dp for dp in incoming_entity.discrete_utilities}
+        
+        for existing_dp in existing_entity.discrete_utilities:
+            if existing_dp.id in incoming_dps_by_id:
+                incoming_dp = incoming_dps_by_id[existing_dp.id]
+                # Only update the utility_value field
+                if existing_dp.utility_value != incoming_dp.utility_value:
+                    existing_dp.utility_value = incoming_dp.utility_value
+            # If no match, ignore and leave existing discrete utility unchanged
 
         return existing_entity
     

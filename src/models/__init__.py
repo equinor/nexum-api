@@ -21,3 +21,8 @@ from src.models.discrete_probability import (
     DiscreteProbabilityParentOption, # type: ignore
     DiscreteProbability, # type: ignore
 )  
+from src.models.discrete_utility import (
+    DiscreteUtilityParentOutcome, # type: ignore
+    DiscreteUtilityParentOption, # type: ignore
+    DiscreteUtility, # type: ignore
+)  

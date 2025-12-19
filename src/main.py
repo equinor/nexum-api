@@ -11,6 +11,7 @@ import src.routes.objective_routes as objective_routes
 import src.routes.opportunity_routes as opportunity_routes
 import src.routes.uncertainty_routes as uncertainty_routes
 import src.routes.discrete_probability_routes as discrete_probability_routes
+import src.routes.discrete_utility_routes as discrete_utility_routes
 import src.routes.utility_routes as utility_routes
 import src.routes.value_metric_routes as value_metric_routes
 import src.routes.project_routes as project_routes
@@ -91,6 +92,7 @@ app.include_router(objective_routes.router, dependencies=[Depends(verify_token)]
 app.include_router(opportunity_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(node_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(uncertainty_routes.router, dependencies=[Depends(verify_token)])
+app.include_router(discrete_utility_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(discrete_probability_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(utility_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(value_metric_routes.router, dependencies=[Depends(verify_token)])

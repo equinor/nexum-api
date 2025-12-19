@@ -16,7 +16,6 @@ from src.dtos.node_dtos import NodeIncomingDto
 from src.dtos.node_style_dtos import NodeStyleIncomingDto
 from src.dtos.option_dtos import OptionIncomingDto
 from src.dtos.outcome_dtos import OutcomeIncomingDto
-from src.dtos.discrete_probability_dtos import DiscreteProbabilityIncomingDto
 from src.seed_database import GenerateUuid
 
 
@@ -46,13 +45,11 @@ async def test_create_issue(client: AsyncClient):
         OptionIncomingDto(name=alt, decision_id=decision_id, utility=0) for alt in alternatives
     ]
     x_position = 600
-    width = 100
-    height = 200
     node = NodeIncomingDto(
         scenario_id=scenario_id,
         issue_id=uuid4(),
         node_style=NodeStyleIncomingDto(
-            node_id=uuid4(), x_position=x_position, width=width, height=height
+            node_id=uuid4(), x_position=x_position,
         ),
     )
     issue = IssueIncomingDto(
@@ -64,7 +61,6 @@ async def test_create_issue(client: AsyncClient):
         node=node,
         uncertainty=None,
         utility=None,
-        value_metric=None,
     )
     payload = [issue.model_dump(mode="json")]
 
@@ -129,7 +125,6 @@ async def test_update_issue(client: AsyncClient):
                 id=example_issue.uncertainty.id, issue_id=example_issue.id, outcomes=new_outcomes,
             ),
             utility=None,
-            value_metric=None,
         ).model_dump(mode="json")
     ]
 

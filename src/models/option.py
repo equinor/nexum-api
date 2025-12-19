@@ -13,6 +13,7 @@ from src.constants import DatabaseConstants
 
 if TYPE_CHECKING:
     from src.models.discrete_probability import DiscreteProbabilityParentOption
+    from src.models.discrete_utility import DiscreteUtilityParentOption
 
 
 class Option(Base, BaseEntity):
@@ -28,6 +29,12 @@ class Option(Base, BaseEntity):
 
     discrete_probability_parent_options: Mapped[list["DiscreteProbabilityParentOption"]] = relationship(
         "DiscreteProbabilityParentOption",
+        back_populates="parent_option",
+        cascade="all, delete-orphan",
+    )
+
+    discrete_utility_parent_options: Mapped[list["DiscreteUtilityParentOption"]] = relationship(
+        "DiscreteUtilityParentOption",
         back_populates="parent_option",
         cascade="all, delete-orphan",
     )

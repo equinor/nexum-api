@@ -118,8 +118,8 @@ class DecisionTreeGraph():
 
             for dto in discrete_prob_dtos:
                 if dto.probability is not None:
-                    probability_dto = ProbabilityDto(outcome_name=self.outcomes_lookup[dto.child_outcome_id.__str__()],
-                                                     outcome_id=dto.child_outcome_id,
+                    probability_dto = ProbabilityDto(outcome_name=self.outcomes_lookup[dto.outcome_id.__str__()],
+                                                     outcome_id=dto.outcome_id,
                                                      probability_value=dto.probability,
                                                      discrete_probability_id=dto.id)
                     probability_dtos.append(probability_dto)
@@ -149,8 +149,8 @@ class DecisionTreeCreator():
     async def populate_treenode_lookup(self, nodes: list[TreeNodeDto]) -> Dict[str, TreeNodeDto]:
         return {str(node.id): node for node in nodes}
 
-    async def create_decision_tree(self) -> DecisionTreeGraph:
-        return await self.convert_to_decision_tree(scenario_id=self.scenario_id)
+    async def create_decision_tree(self, partial_order: Optional[list[uuid.UUID]] = None) -> DecisionTreeGraph:
+        return await self.convert_to_decision_tree(scenario_id=self.scenario_id, partial_order=partial_order)
 
     async def create_data_struct(self, nodes:list[TreeNodeDto], edges:list[EdgeOutgoingDto]) -> Tuple[List[uuid.UUID], List[EdgeUUIDDto]]:
         node_ids = [node.id for node in nodes]
@@ -245,6 +245,11 @@ class DecisionTreeCreator():
                     cid_copy.nx.remove_node(node) # type: ignore
         return decisions
 
+    async def calculate_partial_order_issues(self) -> List[uuid.UUID]:
+        partial_order = await self.calculate_partial_order()
+        partial_order_issues = [self.treenode_lookup[id.__str__()].issue.id for id in partial_order]
+        return partial_order_issues
+
     async def calculate_partial_order(self) -> list[uuid.UUID]:
         """Partial order algorithm
         TODO: handle utility nodes
@@ -294,9 +299,10 @@ class DecisionTreeCreator():
 
         return zip(tree_stack, [node_in_partial_order_id] * len(tree_stack), strict=False)
 
-    async def convert_to_decision_tree(self, scenario_id:uuid.UUID) -> DecisionTreeGraph:
+    async def convert_to_decision_tree(self, scenario_id:uuid.UUID, partial_order: Optional[list[uuid.UUID]] = None) -> DecisionTreeGraph:
         #TODO: Update ID2DT according to way we deal with probabilities
-        partial_order = await self.calculate_partial_order()
+        if not partial_order:
+            partial_order = await self.calculate_partial_order()
         root_node = partial_order[0]
         decision_tree = DecisionTreeGraph(root=root_node)
         # tree_stack contains views of the partial order nodes

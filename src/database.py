@@ -1,6 +1,6 @@
 from sqlalchemy.sql import select, asc
 from enum import Enum
-from src.models import Project, Scenario
+from src.models import Project, Scenario, ValueMetric
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from src.services.session_handler import session_handler
 from src.config import config
@@ -8,6 +8,7 @@ from src.config import config
 from src.auth.db_auth import DatabaseAuthenticator
 import urllib.parse
 from typing import Optional, Any
+from src.constants import default_value_metric_id
 
 
 class DatabaseConnectionStrings(Enum):
@@ -62,7 +63,23 @@ async def validate_default_scenarios(session: AsyncSession):
                 else:
                     scenario.is_default = False
             await session.flush()
+    await session.commit()
 
+async def ensure_default_value_metric_exists(session: AsyncSession):
+    value_metrics = list((await session.scalars(select(ValueMetric))).all())
+
+    for value_metric in value_metrics:
+        if value_metric.name == "":
+            await session.delete(value_metric)
+
+    if default_value_metric_id in [x.id for x in value_metrics]:
+        await session.commit()
+        return
+    
+    # create default value metric
+    default_metric = ValueMetric(id = default_value_metric_id, name='value')
+    session.add(default_metric)
+    await session.commit()
 
 async def get_connection_string_and_token(
     env: str,

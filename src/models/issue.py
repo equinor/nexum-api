@@ -16,7 +16,6 @@ from src.models.decision import Decision
 from src.models.uncertainty import Uncertainty
 from src.models.node import Node
 from src.models.utility import Utility
-from src.models.value_metric import ValueMetric
 from src.constants import (
     DatabaseConstants, 
     Type,
@@ -77,13 +76,6 @@ class Issue(Base, BaseEntity, BaseAuditableEntity):
         single_parent=True,
     )
 
-    value_metric: Mapped[Optional[ValueMetric]] = relationship(
-        ValueMetric,
-        back_populates="issue",
-        cascade="all, delete-orphan",
-        single_parent=True,
-    )
-
     def __init__(
         self,
         id: uuid.UUID,
@@ -98,7 +90,6 @@ class Issue(Base, BaseEntity, BaseAuditableEntity):
         decision: Optional[Decision] = None,
         uncertainty: Optional[Uncertainty] = None,
         utility: Optional[Utility] = None,
-        value_metric: Optional[ValueMetric] = None,
     ):
         self.id = id
         self.scenario_id = scenario_id
@@ -112,7 +103,6 @@ class Issue(Base, BaseEntity, BaseAuditableEntity):
         self.decision = decision
         self.uncertainty = uncertainty
         self.utility = utility
-        self.value_metric = value_metric
 
 
 @listens_for(Issue, "before_insert")

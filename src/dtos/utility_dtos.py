@@ -1,21 +1,23 @@
 import uuid
 from pydantic import BaseModel, Field
-from typing import List
 from src.models.utility import Utility
-
+from src.dtos.discrete_utility_dtos import (
+    DiscreteUtilityIncomingDto,
+    DiscreteUtilityOutgoingDto,
+    DiscreteUtilityMapper,
+)
 
 class UtilityDto(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     issue_id: uuid.UUID
-    values: List[float]
 
 
 class UtilityIncomingDto(UtilityDto):
-    pass
+    discrete_utilities: list[DiscreteUtilityIncomingDto]
 
 
 class UtilityOutgoingDto(UtilityDto):
-    pass
+    discrete_utilities: list[DiscreteUtilityOutgoingDto]
 
 
 class UtilityMapper:
@@ -23,10 +25,8 @@ class UtilityMapper:
     def to_outgoing_dto(entity: Utility) -> UtilityOutgoingDto:
         return UtilityOutgoingDto(
             id=entity.id,
-            values=[float(p) for p in entity.values.split(",") if p.strip()]
-            if entity.values
-            else [],
             issue_id=entity.issue_id,
+            discrete_utilities=DiscreteUtilityMapper.to_outgoing_dtos(entity.discrete_utilities),
         )
 
     @staticmethod
@@ -34,7 +34,7 @@ class UtilityMapper:
         return Utility(
             id=dto.id,
             issue_id=dto.issue_id,
-            values=",".join(map(str, dto.values)),
+            discrete_utilities=DiscreteUtilityMapper.to_entities(dto.discrete_utilities),
         )
 
     @staticmethod

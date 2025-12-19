@@ -22,6 +22,7 @@ from src.database import (
     get_connection_string_and_token,
     build_connection_url,
     validate_default_scenarios,
+    ensure_default_value_metric_exists,
 )
 from src.logger import get_dot_api_logger
 
@@ -168,7 +169,15 @@ class SessionManager:
             raise RuntimeError("Database session factory is not initialized.")
 
         async for session in self.get_session():
-            await validate_default_scenarios(session)
+            try:
+                await validate_default_scenarios(session)
+            except Exception as e:
+                self._logger.error(f"Database start task {validate_default_scenarios.__name__} failed: {e}")
+            try:
+                await ensure_default_value_metric_exists(session)
+            except Exception as e:
+                self._logger.error(f"Database start task {ensure_default_value_metric_exists.__name__} failed: {e}")
+
 
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Yield a database session with the correct schema set."""
