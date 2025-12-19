@@ -46,3 +46,7 @@ class UtilityService:
         entities: list[Utility] = await UtilityRepository(session).get_all(odata_query=odata_query)
         result = UtilityMapper.to_outgoing_dtos(entities)
         return result
+    
+    async def recalculate_discrete_utility_table_async(self, session: AsyncSession, id: uuid.UUID) -> Optional[UtilityOutgoingDto]:
+        entity = await UtilityRepository(session).recalculate_discrete_utility_table_async(id)
+        return UtilityMapper.to_outgoing_dto(entity) if entity is not None else None
