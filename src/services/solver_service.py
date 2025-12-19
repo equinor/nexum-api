@@ -23,14 +23,6 @@ class SolverService:
                 edges,
             ) = await self.scenario_service.get_influence_diagram_data(session, scenario_id)
 
-        solution = PyagrumSolver().find_optimal_decisions(issues=issues, edges=edges)
-        solution = await asyncio.get_event_loop().run_in_executor(
-            executor,
-            partial(
-                PyagrumSolver().find_optimal_decisions,
-                issues=issues,
-                edges=edges,
-            ),
-        )
+        solution = await PyagrumSolver().find_optimal_decisions(issues=issues, edges=edges)
 
         return solution
