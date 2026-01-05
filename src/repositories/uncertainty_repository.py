@@ -23,14 +23,7 @@ def uncertainty_table_load_query(id: uuid.UUID):
             joinedload(Issue.node).options(
                 selectinload(Node.head_edges).options(
                     joinedload(Edge.tail_node).options(
-                        joinedload(Node.issue).options(
-                            joinedload(Issue.uncertainty).options(
-                                selectinload(Uncertainty.outcomes)
-                            ),
-                            joinedload(Issue.decision).options(
-                                selectinload(Decision.options)
-                            )
-                        )
+                        joinedload(Node.issue)
                     )
                 ),
             ),
