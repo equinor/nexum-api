@@ -10,8 +10,9 @@ from src.constants import Type
 from src.seed_database import GenerateUuid
 from src.dtos.issue_dtos import IssueOutgoingDto
 from src.dtos.edge_dtos import EdgeOutgoingDto
-from src.dtos.decision_tree_dtos import EdgeUUIDDto, EndPointNodeDto, DecisionTreeDTO, TreeNodeDto, ProbabilityDto
+from src.dtos.decision_tree_dtos import EdgeUUIDDto, EndPointNodeDto, DecisionTreeDTO, TreeNodeDto, ProbabilityDto, UtilityDTDto
 from src.dtos.discrete_probability_dtos import DiscreteProbabilityOutgoingDto
+from src.dtos.discrete_utility_dtos import DiscreteUtilityOutgoingDto
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,8 @@ class DecisionTreeGraph():
                 children_dtos.append(child_dto)
 
         copy_node = copy.deepcopy(node)
-        copy_node.probabilities = await self.get_probability_value(copy_node)
+        copy_node.probabilities = await self.get_probability_values(copy_node)
+        copy_node.utilities = await self.get_utility_values(copy_node)
         copy_node.id = await self.create_treenode_id(copy_node)
         return await self.get_decision_tree_dto(issue=copy_node, children=children_dtos if children_dtos else None)
 
@@ -88,7 +90,7 @@ class DecisionTreeGraph():
         id_string = "root" if id_string == "" else "root" + " - " + id_string
         return GenerateUuid.as_uuid(id_string)
     
-    async def find_matching_dtos(self, object_uuids: list[uuid.UUID],
+    async def find_matching_probabilities_dtos(self, object_uuids: list[uuid.UUID],
                                 in_dtos : list[DiscreteProbabilityOutgoingDto]):
         out_dtos : list[DiscreteProbabilityOutgoingDto] = []
         for dto in in_dtos:
@@ -97,7 +99,16 @@ class DecisionTreeGraph():
                 out_dtos.append(dto)
         return out_dtos
     
-    async def get_probability_value(self, node: TreeNodeDto) -> Optional[list[ProbabilityDto]]:
+    async def find_matching_utility_dtos(self, object_uuids: list[uuid.UUID],
+                                    in_dtos : list[DiscreteUtilityOutgoingDto]):
+        out_dtos : list[DiscreteUtilityOutgoingDto] = []
+        for dto in in_dtos:
+            combined_set = set(dto.parent_option_ids).union(set(dto.parent_outcome_ids))
+            if  set(combined_set).issubset(set(object_uuids)):
+                out_dtos.append(dto)
+        return out_dtos
+    
+    async def get_probability_values(self, node: TreeNodeDto) -> Optional[list[ProbabilityDto]]:
         treenode_id = node.id
         issue = node.issue
         probability_dtos : list[ProbabilityDto] = []
@@ -114,7 +125,7 @@ class DecisionTreeGraph():
                 parent_id = await self.get_parent(treenode_id)
                 count += 1
 
-            discrete_prob_dtos = await self.find_matching_dtos(parent_labels, issue.uncertainty.discrete_probabilities)
+            discrete_prob_dtos = await self.find_matching_probabilities_dtos(parent_labels, issue.uncertainty.discrete_probabilities)
 
             for dto in discrete_prob_dtos:
                 if dto.probability is not None:
@@ -125,6 +136,22 @@ class DecisionTreeGraph():
                     probability_dtos.append(probability_dto)
 
             return probability_dtos
+        
+    async def get_utility_values(self, node: TreeNodeDto) -> Optional[list[UtilityDTDto]]:
+        treenode_id = node.id
+        issue = node.issue
+        utility_dtos : list[UtilityDTDto] = []
+
+        if (isinstance(issue, IssueOutgoingDto)):
+             if issue.type == Type.UNCERTAINTY.value and issue.uncertainty is not None:
+                outcomes = issue.uncertainty.outcomes
+                for outcome in outcomes:
+                    utility_dto = UtilityDTDto(branch_name=outcome.name,
+                                               branch_id=outcome.id,
+                                               utility_value=outcome.utility)
+                    utility_dtos.append(utility_dto)
+
+        return utility_dtos    
 
 class DecisionTreeCreator():
     def __init__(self) -> None:
