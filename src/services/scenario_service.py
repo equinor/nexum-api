@@ -117,6 +117,19 @@ class ScenarioService:
         )
         result = ScenarioMapper.to_populated_dtos(scenarios)
         return result
+    
+    def _remove_utilities_with_too_few_connections(self, issue_dtos: list[IssueOutgoingDto], edge_dtos: list[EdgeOutgoingDto], minimum_number_connections: int = 2):
+        utility_issues = [issue for issue in issue_dtos if issue.type == Type.UTILITY.value]
+        utilities_to_remove: list[IssueOutgoingDto] = []
+        edges_to_remove: list[EdgeOutgoingDto] = []
+        for utility_issue in utility_issues:
+            edges = [edge for edge in edge_dtos if edge.head_issue_id==utility_issue.id]
+            edges_to_remove.extend([edge for edge in edge_dtos if edge.tail_issue_id==utility_issue.id])
+            if len(edges) < minimum_number_connections:
+                utilities_to_remove.append(utility_issue)
+                edges_to_remove.extend(edges)
+        for issue in utilities_to_remove: issue_dtos.remove(issue)
+        for edge in edges_to_remove: edge_dtos.remove(edge)
 
     async def get_influence_diagram_data(
         self, session: AsyncSession, scenario_id: uuid.UUID
@@ -124,14 +137,14 @@ class ScenarioService:
         issue_filter = IssueFilter(
             scenario_ids=[scenario_id],
             boundaries=[Boundary.ON.value, Boundary.IN.value],
-            types=[Type.DECISION.value, Type.UNCERTAINTY.value],
+            types=[Type.DECISION.value, Type.UNCERTAINTY.value, Type.UTILITY.value],
             decision_types=[DecisionHierarchy.FOCUS.value],
             is_key_uncertainties=[True],
         )
         edge_filter = EdgeFilter(
             scenario_ids=[scenario_id],
             issue_boundaries=[Boundary.ON.value, Boundary.IN.value],
-            issue_types=[Type.DECISION.value, Type.UNCERTAINTY.value],
+            issue_types=[Type.DECISION.value, Type.UNCERTAINTY.value, Type.UTILITY.value],
             decision_types=[DecisionHierarchy.FOCUS.value],
             is_key_uncertainties=[True],
         )
@@ -145,7 +158,9 @@ class ScenarioService:
 
         issue_dtos = IssueMapper.to_outgoing_dtos(issues_entities)
         edge_dtos = EdgeMapper.to_outgoing_dtos(edges_entities)
-        
+
+        self._remove_utilities_with_too_few_connections(issue_dtos, edge_dtos)
+
         # Run influence diagram creation and validation in a separate thread
         influence_diagram = await asyncio.to_thread(
             lambda: InfluenceDiagramDOT(edge_dtos, issue_dtos)
@@ -155,4 +170,3 @@ class ScenarioService:
         # Return the validated (potentially filtered) issues and edges
         return influence_diagram.issues, influence_diagram.edges
     
-
