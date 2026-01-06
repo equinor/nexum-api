@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from itertools import product, chain
 from src.models.utility import Utility
 from src.models import DiscreteUtility, DiscreteUtilityParentOption, DiscreteUtilityParentOutcome
@@ -13,26 +13,8 @@ from src.constants import Type, DecisionHierarchy, Boundary
 from src.models import Issue, Node, Edge, Decision, Uncertainty
 from src.constants import default_value_metric_id
 
-
-class UtilityRepository(BaseRepository[Utility, uuid.UUID]):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, Utility, query_extension_method=QueryExtensions.load_utility_with_relationships)
-
-    async def update(self, entities: list[Utility]) -> list[Utility]:
-        entities_to_update = await self.get([utility.id for utility in entities])
-        # sort the entity lists to share the same order according to the entity.id
-        self.prepare_entities_for_update([entities, entities_to_update])
-        for n, entity_to_update in enumerate(entities_to_update):
-            entity = entities[n]
-            entity_to_update = await self._update_utility(entity, entity_to_update)
-
-        await self.session.flush()
-        return entities_to_update
-
-def recalculate_discrete_utility_table(session: Session, id: uuid.UUID):
-
-    query = (
-        select(Utility).where(Utility.id == id).options(
+def utility_table_load_query(id: uuid.UUID):
+    return select(Utility).where(Utility.id == id).options(
             selectinload(Utility.discrete_utilities).options(
                 selectinload(DiscreteUtility.parent_options),
                 selectinload(DiscreteUtility.parent_outcomes),
@@ -59,11 +41,8 @@ def recalculate_discrete_utility_table(session: Session, id: uuid.UUID):
                 ),            
             )
         )
-    )
-    entity: Utility = (session.scalars(query)).unique().first()
-    if entity is None:
-        return
 
+def perform_recalc(entity: Utility) -> Utility:
     entity.discrete_utilities = []
 
     parent_outcomes_list: List[List[uuid.UUID]] = []
@@ -88,7 +67,7 @@ def recalculate_discrete_utility_table(session: Session, id: uuid.UUID):
     # since the utility table dimensions are determined entirly from the parents if there are no parents the utility table is not defined 
     if len(parent_outcomes_list) == 0 and len(parent_options_list) == 0:
         entity.discrete_utilities = []
-        return
+        return entity
     
     parent_combinations = list(product(*parent_outcomes_list, *parent_options_list))
     # get all options and outcomes to filter on later
@@ -112,4 +91,37 @@ def recalculate_discrete_utility_table(session: Session, id: uuid.UUID):
             )
         )
 
-    return
+    return entity
+
+
+class UtilityRepository(BaseRepository[Utility, uuid.UUID]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, Utility, query_extension_method=QueryExtensions.load_utility_with_relationships)
+
+    async def update(self, entities: list[Utility]) -> list[Utility]:
+        entities_to_update = await self.get([utility.id for utility in entities])
+        # sort the entity lists to share the same order according to the entity.id
+        self.prepare_entities_for_update([entities, entities_to_update])
+        for n, entity_to_update in enumerate(entities_to_update):
+            entity = entities[n]
+            entity_to_update = await self._update_utility(entity, entity_to_update)
+
+        await self.session.flush()
+        return entities_to_update
+    
+    async def recalculate_discrete_utility_table_async(self, id: uuid.UUID):
+        query = utility_table_load_query(id)
+        entity: Utility = (await self.session.scalars(query)).unique().first()
+        if entity is None:
+            return
+        perform_recalc(entity)
+        await self.session.flush()
+
+def recalculate_discrete_utility_table(session: Session, id: uuid.UUID) -> Optional[Utility]:
+
+    query = utility_table_load_query(id)
+
+    entity: Optional[Utility] = (session.scalars(query)).unique().first()
+    if entity is not None:
+        entity = perform_recalc(entity)
+    return entity
