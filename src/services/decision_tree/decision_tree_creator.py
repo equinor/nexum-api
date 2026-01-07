@@ -277,6 +277,11 @@ class DecisionTreeCreator:
                     cid_copy.nx.remove_node(node)  # type: ignore
         return decisions
 
+    async def calculate_partial_order_issues(self) -> List[uuid.UUID]:
+        partial_order = await self.calculate_partial_order()
+        partial_order_issues = [self.treenode_lookup[id.__str__()].issue.id for id in partial_order]
+        return partial_order_issues
+
     async def calculate_partial_order(self) -> list[uuid.UUID]:
         """Partial order algorithm
         TODO: handle utility nodes

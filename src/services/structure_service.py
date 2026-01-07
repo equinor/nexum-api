@@ -48,5 +48,5 @@ class StructureService:
         decision_tree_creator = await DecisionTreeCreator.initialize(
             project_id=project_id, nodes=issues, edges=edges
         )
-        uuid_list = await decision_tree_creator.calculate_partial_order()
+        uuid_list = await decision_tree_creator.calculate_partial_order_issues()
         return PartialOrderDTO(issue_ids=uuid_list)
