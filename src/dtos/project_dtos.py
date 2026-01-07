@@ -22,8 +22,8 @@ class ProjectDto(BaseModel):
     ] = ""
     parent_project_id: uuid.UUID | None = None
     parent_project_name: Annotated[
-        str, Field(max_length=DatabaseConstants.MAX_SHORT_STRING_LENGTH.value)
-    ] = ""
+        str | None, Field(max_length=DatabaseConstants.MAX_SHORT_STRING_LENGTH.value)
+    ] = None
     public: bool = False
     end_date: datetime = Field(default_factory=default_endtime)
 
@@ -64,8 +64,8 @@ class ProjectMapper:
         return ProjectOutgoingDto(
             id=entity.id,
             name=entity.name,
-            parent_project_name=entity.parent_project_name,
             parent_project_id=entity.parent_project_id,
+            parent_project_name=entity.parent_project_name,
             opportunityStatement=entity.opportunityStatement,
             public=entity.public,
             end_date=entity.end_date,
@@ -77,8 +77,8 @@ class ProjectMapper:
         return PopulatedProjectDto(
             id=entity.id,
             name=entity.name,
-            parent_project_name=entity.parent_project_name,
             parent_project_id=entity.parent_project_id,
+            parent_project_name=entity.parent_project_name,
             opportunityStatement=entity.opportunityStatement,
             public=entity.public,
             end_date=entity.end_date,

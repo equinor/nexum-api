@@ -1,5 +1,6 @@
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.services.project_duplication_service import ProjectDuplicationService
 from src.session_manager import sessionmanager
 from sqlalchemy import create_engine, Engine
 from src.services.project_role_service import ProjectRoleService
@@ -48,6 +49,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def get_project_service() -> ProjectService:
     return ProjectService()
+
+
+async def get_project_duplication_service() -> ProjectDuplicationService:
+    return ProjectDuplicationService()
 
 
 async def get_project_role_service() -> ProjectRoleService:
