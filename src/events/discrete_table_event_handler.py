@@ -164,7 +164,9 @@ class DiscreteTableEventHandler:
         changed_edges: set[uuid.UUID] = set()
 
         head_ids: set[uuid.UUID] = set()
+        edge_tail_to_head_mapping: dict[uuid.UUID, uuid.UUID] = {}
         
+
         for modified_entity in modified_entities:
             if isinstance(modified_entity, Edge):
                 changed_edges.add(modified_entity.id)
@@ -174,14 +176,18 @@ class DiscreteTableEventHandler:
                 # handle head id updated
                 if isinstance(hist_head.added, list) and hist_head.added.__len__() == 1:
                     head_ids.add(hist_head.added[0])
+
                 if isinstance(hist_head.deleted, list) and hist_head.deleted.__len__() == 1:
                     head_ids.add(hist_head.deleted[0])
 
                 # handle tail id updated
                 if isinstance(hist_tail.added, list) and hist_tail.added.__len__() == 1:
                     head_ids.add(modified_entity.head_id)
+                    edge_tail_to_head_mapping[hist_tail.added[0]] = modified_entity.head_id
+                    
                 if isinstance(hist_tail.deleted, list) and hist_tail.deleted.__len__() == 1:
                     head_ids.add(modified_entity.head_id)
+                    edge_tail_to_head_mapping[hist_tail.deleted[0]] = modified_entity.head_id
                     
             elif isinstance(modified_entity, Issue):
                 if self._has_boundary_change(modified_entity):
@@ -199,17 +205,19 @@ class DiscreteTableEventHandler:
                 if self._has_focus_type_change(modified_entity):
                     issues_to_search.add(modified_entity.issue_id)
         
+        # Find the head node issues that are affected by the edge updates
+        if edge_tail_to_head_mapping or head_ids:
+            session_info = SessionInfoHandler.add_to_session_info(
+                session_info,
+                node_repository.add_effected_session_enities_by_nodes(session, head_ids, edge_tail_to_head_mapping)
+            )
+        
         # Find affected uncertainties from issue changes
         if issues_to_search:
             session_info = SessionInfoHandler.add_to_session_info(session_info,
                 issue_repository.find_effected_session_entities(session, issues_to_search)
             )
         
-        if head_ids:
-            session_info = SessionInfoHandler.add_to_session_info(session_info,
-                node_repository.add_effected_session_entities(session, head_ids)
-            )
-
         return session_info
     
     def _process_additions(self, session: Session, new_entities: list[Any]) -> SessionInfo:
