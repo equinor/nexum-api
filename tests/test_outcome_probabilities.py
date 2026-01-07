@@ -18,8 +18,7 @@ async def test_get_discrete_probabilities(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_discrete_probability(client: AsyncClient):
-    # Use the first outcome probability ID from seed data (project_index=0, scenario_index=0, issue_node_index=0)
-    first_outcome_prob_id = GenerateUuid.as_string("0_0_0_op1")
+    first_outcome_prob_id = GenerateUuid.as_string("0_0_op1")
     response = await client.get(f"/discrete_probabilities/{first_outcome_prob_id}")
     assert response.status_code == 200, f"Response content: {response.content}"
 

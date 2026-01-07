@@ -82,24 +82,6 @@ async def get_all_issues_from_project(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/scenarios/{scenario_id}/issues")
-async def get_all_issues_from_scenario(
-    scenario_id: uuid.UUID,
-    issue_service: IssueService = Depends(get_issue_service),
-    filter: Optional[str] = Query(None, description=SwaggerDocumentationConstants.FILTER_DOC),
-    session: AsyncSession = Depends(get_db),
-) -> list[IssueOutgoingDto]:
-    try:
-        issues: list[IssueOutgoingDto] = await issue_service.get_all(
-            session,
-            IssueFilter(scenario_ids=[scenario_id]),
-            odata_query=filter,
-        )
-        return issues
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.delete("/issues/{id}")
 async def delete_issue(
     id: uuid.UUID,
@@ -112,6 +94,7 @@ async def delete_issue(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.delete("/issues")
 async def delete_issues(
     ids: list[uuid.UUID] = Query([]),
@@ -123,6 +106,7 @@ async def delete_issues(
         await session.commit()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.put("/issues")
 async def update_issues(

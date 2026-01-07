@@ -32,21 +32,18 @@ async def test_update_node(client: AsyncClient):
     example_node = parse_response_to_dto_test(
         await client.get(f"/nodes/{node_id}"), NodeOutgoingDto
     )
-    new_scenario_id = GenerateUuid.as_uuid(1)
+    new_project_id = GenerateUuid.as_uuid(1)
     new_y_position = 500
-    new_width = 150
-    new_height = 250
+
     payload = [
         NodeIncomingDto(
             id=example_node.id,
             issue_id=example_node.issue_id,
-            scenario_id=new_scenario_id,
+            project_id=new_project_id,
             node_style=NodeStyleIncomingDto(
                 id=example_node.node_style.id,
                 node_id=example_node.id,
                 y_position=new_y_position,
-                width=new_width,
-                height=new_height,
             ),
         ).model_dump(mode="json")
     ]
@@ -55,7 +52,7 @@ async def test_update_node(client: AsyncClient):
     assert response.status_code == 200, f"Response content: {response.content}"
 
     response_content = parse_response_to_dtos_test(response, NodeOutgoingDto)
-    assert response_content[0].scenario_id == new_scenario_id
+    assert response_content[0].project_id == new_project_id
     assert response_content[0].node_style.y_position == new_y_position
 
 

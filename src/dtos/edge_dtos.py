@@ -8,7 +8,7 @@ class EdgeDto(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     tail_id: uuid.UUID
     head_id: uuid.UUID
-    scenario_id: uuid.UUID
+    project_id: uuid.UUID
 
 
 class EdgeIncomingDto(EdgeDto):
@@ -29,7 +29,7 @@ class EdgeMapper:
             id=entity.id,
             tail_id=entity.tail_id,
             head_id=entity.head_id,
-            scenario_id=entity.scenario_id,
+            project_id=entity.project_id,
             head_issue_id=entity.head_node.issue_id,
             tail_issue_id=entity.tail_node.issue_id,
             head_node=NodeMapper.to_outgoing_dto(entity.head_node),
@@ -42,7 +42,7 @@ class EdgeMapper:
             id=dto.id,
             tail_node_id=dto.tail_id,
             head_node_id=dto.head_id,
-            scenario_id=dto.scenario_id,
+            project_id=dto.project_id,
         )
 
     @staticmethod

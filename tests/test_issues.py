@@ -37,7 +37,7 @@ async def test_get_issue(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_create_issue(client: AsyncClient):
-    scenario_id = GenerateUuid.as_uuid(4)
+    project_id = GenerateUuid.as_uuid(4)
     decision_id = uuid4()
     alternatives = ["alt1", "alt2"]
 
@@ -46,15 +46,16 @@ async def test_create_issue(client: AsyncClient):
     ]
     x_position = 600
     node = NodeIncomingDto(
-        scenario_id=scenario_id,
+        project_id=project_id,
         issue_id=uuid4(),
         node_style=NodeStyleIncomingDto(
-            node_id=uuid4(), x_position=x_position,
+            node_id=uuid4(),
+            x_position=x_position,
         ),
     )
     issue = IssueIncomingDto(
+        project_id=project_id,
         decision=DecisionIncomingDto(id=decision_id, issue_id=uuid4(), options=options),
-        scenario_id=scenario_id,
         type=Type.DECISION,
         boundary=Boundary.OUT,
         order=2,
@@ -89,7 +90,7 @@ async def test_update_issue(client: AsyncClient):
     if example_issue.decision is None or example_issue.uncertainty is None:
         raise Exception("example_issue.decision should not be None")
     node = NodeIncomingDto(
-        scenario_id=example_issue.scenario_id,
+        project_id=example_issue.project_id,
         id=example_issue.node.id,
         issue_id=example_issue.id,
         node_style=None,
@@ -102,9 +103,7 @@ async def test_update_issue(client: AsyncClient):
     ]
     new_outcomes_names = ["A", "B", "C"]
     new_outcomes = [
-        OutcomeIncomingDto(
-            name=outcome, uncertainty_id=example_issue.uncertainty.id, utility=0
-        )
+        OutcomeIncomingDto(name=outcome, uncertainty_id=example_issue.uncertainty.id, utility=0)
         for outcome in new_outcomes_names
     ]
 
@@ -113,7 +112,7 @@ async def test_update_issue(client: AsyncClient):
     payload = [
         IssueIncomingDto(
             id=example_issue.id,
-            scenario_id=example_issue.scenario_id,
+            project_id=example_issue.project_id,
             type=new_type,
             boundary=new_boundary,
             order=0,
@@ -122,7 +121,9 @@ async def test_update_issue(client: AsyncClient):
                 id=example_issue.decision.id, issue_id=example_issue.id, options=new_options
             ),
             uncertainty=UncertaintyIncomingDto(
-                id=example_issue.uncertainty.id, issue_id=example_issue.id, outcomes=new_outcomes,
+                id=example_issue.uncertainty.id,
+                issue_id=example_issue.id,
+                outcomes=new_outcomes,
             ),
             utility=None,
         ).model_dump(mode="json")
@@ -134,7 +135,9 @@ async def test_update_issue(client: AsyncClient):
     response_content = parse_response_to_dtos_test(response, IssueOutgoingDto)
     r = response_content[0]
 
-    assert r.uncertainty is not None and [x.name for x in r.uncertainty.outcomes] == new_outcomes_names
+    assert (
+        r.uncertainty is not None and [x.name for x in r.uncertainty.outcomes] == new_outcomes_names
+    )
     assert r.decision is not None and [x.name for x in r.decision.options] == new_alternatives
     assert r.type == new_type
 

@@ -1,13 +1,20 @@
+import asyncio
 import uuid
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.constants import ProjectRoleType
+from src.domain.influence_diagram import InfluenceDiagramDOT
+from src.dtos.edge_dtos import EdgeMapper, EdgeOutgoingDto
+from src.dtos.issue_dtos import IssueMapper, IssueOutgoingDto
+from src.models.filters.edge_filter import EdgeFilter
+from src.models.filters.issues_filter import IssueFilter
+from src.repositories.edge_repository import EdgeRepository
+from src.repositories.issue_repository import IssueRepository
+from src.constants import Boundary, DecisionHierarchy, ProjectRoleType, Type
 from src.dtos.project_roles_dtos import ProjectRoleCreateDto, ProjectRoleMapper
 from src.models.project_role import ProjectRole
 from src.repositories.project_role_repository import ProjectRoleRepository
 from src.models import (
     Project,
-    User,
 )
 from src.dtos.project_dtos import (
     ProjectMapper,
@@ -20,50 +27,12 @@ from src.dtos.user_dtos import (
     UserMapper,
     UserIncomingDto,
 )
-from src.dtos.objective_dtos import ObjectiveMapper, ObjectiveViaScenarioDto
-from src.dtos.opportunity_dtos import (
-    OpportunityMapper,
-    OpportunityViaProjectDto,
-)
-from src.dtos.scenario_dtos import (
-    ScenarioMapper,
-    ScenarioCreateViaProjectDto,
-)
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.user_repository import UserRepository
-from src.repositories.scenario_repository import ScenarioRepository
-from src.repositories.opportunity_repository import OpportunityRepository
-from src.repositories.objective_repository import ObjectiveRepository
 from src.models.filters.project_filter import ProjectFilter
 
 
 class ProjectService:
-    async def _create_scenarios_for_project(
-        self,
-        session: AsyncSession,
-        scenario_dtos: list[ScenarioCreateViaProjectDto],
-        user: User,
-        project_id: uuid.UUID,
-    ):
-        scenarios = await ScenarioRepository(session).create(
-            ScenarioMapper.from_create_via_project_to_entities(scenario_dtos, user.id, project_id)
-        )
-        for scenario_dto, scenario in zip(scenario_dtos, scenarios):
-            (
-                objectives,
-                opportunities,
-            ) = await self._create_opportunities_and_objectives_for_scenario(
-                session,
-                scenario_dto.objectives,
-                scenario_dto.opportunities,
-                user,
-                scenario.id,
-            )
-            scenario.objectives, scenario.opportunities = (
-                objectives,
-                opportunities,
-            )
-        return scenarios
 
     async def _create_role_for_project(
         self,
@@ -78,22 +47,6 @@ class ProjectService:
             [role.id for role in project_user_roles]
         )
         return project_user_role
-
-    async def _create_opportunities_and_objectives_for_scenario(
-        self,
-        session: AsyncSession,
-        objective_dtos: list[ObjectiveViaScenarioDto],
-        opportunities_dtos: list[OpportunityViaProjectDto],
-        user: User,
-        scenario_id: uuid.UUID,
-    ):
-        objectives = await ObjectiveRepository(session).create(
-            ObjectiveMapper.via_scenario_to_entities(objective_dtos, user.id, scenario_id)
-        )
-        opportunities = await OpportunityRepository(session).create(
-            OpportunityMapper.via_scenario_to_entities(opportunities_dtos, user.id, scenario_id)
-        )
-        return objectives, opportunities
 
     async def create(
         self,
@@ -121,10 +74,7 @@ class ProjectService:
                     session, dto.users
                 )
                 project_entity.project_role = project_role_entities
-            scenarios = await self._create_scenarios_for_project(
-                session, dto.scenarios, user, project_entity.id
-            )
-            project_entity.scenarios = scenarios
+
         result: list[ProjectOutgoingDto] = ProjectMapper.to_outgoing_dtos(project_entities)
         return result
 
@@ -153,7 +103,11 @@ class ProjectService:
         ids_to_delete = [
             project_role.project_id
             for project_role in user.project_role
-            if (project_role.role == ProjectRoleType.FACILITATOR or project_role.role == ProjectRoleType.DECISIONMAKER) and project_role.project_id in ids
+            if (
+                project_role.role == ProjectRoleType.FACILITATOR
+                or project_role.role == ProjectRoleType.DECISIONMAKER
+            )
+            and project_role.project_id in ids
         ]
         await ProjectRepository(session).delete(ids=ids_to_delete)
 
@@ -208,3 +162,63 @@ class ProjectService:
         )
         result = ProjectMapper.to_populated_dtos(projects)
         return result
+
+    def _remove_utilities_with_too_few_connections(
+        self,
+        issue_dtos: list[IssueOutgoingDto],
+        edge_dtos: list[EdgeOutgoingDto],
+        minimum_number_connections: int = 2,
+    ):
+        utility_issues = [issue for issue in issue_dtos if issue.type == Type.UTILITY.value]
+        utilities_to_remove: list[IssueOutgoingDto] = []
+        edges_to_remove: list[EdgeOutgoingDto] = []
+        for utility_issue in utility_issues:
+            edges = [edge for edge in edge_dtos if edge.head_issue_id == utility_issue.id]
+            edges_to_remove.extend(
+                [edge for edge in edge_dtos if edge.tail_issue_id == utility_issue.id]
+            )
+            if len(edges) < minimum_number_connections:
+                utilities_to_remove.append(utility_issue)
+                edges_to_remove.extend(edges)
+        for issue in utilities_to_remove:
+            issue_dtos.remove(issue)
+        for edge in edges_to_remove:
+            edge_dtos.remove(edge)
+
+    async def get_influence_diagram_data(
+        self, session: AsyncSession, project_id: uuid.UUID
+    ) -> tuple[list[IssueOutgoingDto], list[EdgeOutgoingDto]]:
+        issue_filter = IssueFilter(
+            project_ids=[project_id],
+            boundaries=[Boundary.ON.value, Boundary.IN.value],
+            types=[Type.DECISION.value, Type.UNCERTAINTY.value, Type.UTILITY.value],
+            decision_types=[DecisionHierarchy.FOCUS.value],
+            is_key_uncertainties=[True],
+        )
+        edge_filter = EdgeFilter(
+            project_ids=[project_id],
+            issue_boundaries=[Boundary.ON.value, Boundary.IN.value],
+            issue_types=[Type.DECISION.value, Type.UNCERTAINTY.value, Type.UTILITY.value],
+            decision_types=[DecisionHierarchy.FOCUS.value],
+            is_key_uncertainties=[True],
+        )
+
+        issues_entities = await IssueRepository(session).get_all(
+            model_filter=issue_filter.construct_filters()
+        )
+        edges_entities = await EdgeRepository(session).get_all(
+            model_filter=edge_filter.construct_filters()
+        )
+
+        issue_dtos = IssueMapper.to_outgoing_dtos(issues_entities)
+        edge_dtos = EdgeMapper.to_outgoing_dtos(edges_entities)
+        self._remove_utilities_with_too_few_connections(issue_dtos, edge_dtos)
+
+        # Run influence diagram creation and validation in a separate thread
+        influence_diagram = await asyncio.to_thread(
+            lambda: InfluenceDiagramDOT(edge_dtos, issue_dtos)
+        )
+        await asyncio.to_thread(influence_diagram.validate_diagram)
+
+        # Return the validated (potentially filtered) issues and edges
+        return influence_diagram.issues, influence_diagram.edges

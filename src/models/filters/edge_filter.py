@@ -17,7 +17,7 @@ class EdgeFilter(BaseFilter):
     ids: Optional[list[uuid.UUID]] = None
     issue_boundaries: Optional[list[str]] = None
     issue_types: Optional[list[str]] = None
-    scenario_ids: Optional[list[uuid.UUID]] = None
+    project_ids: Optional[list[uuid.UUID]] = None
     decision_types: Optional[list[str]] = None
     is_key_uncertainties: Optional[list[bool]] = None
 
@@ -62,7 +62,7 @@ class EdgeFilter(BaseFilter):
             self.is_key_uncertainties, self._head_node_is_key_uncertainty_condition, conditions
         )
 
-        self.add_condition_for_property(self.scenario_ids, self._scenario_id_condition, conditions)
+        self.add_condition_for_property(self.project_ids, self._project_id_condition, conditions)
 
         return conditions
 
@@ -72,8 +72,8 @@ class EdgeFilter(BaseFilter):
         return Edge.id == id
 
     @staticmethod
-    def _scenario_id_condition(scenario_id: uuid.UUID) -> ColumnElement[bool]:
-        return Edge.scenario_id == scenario_id
+    def _project_id_condition(project_id: uuid.UUID) -> ColumnElement[bool]:
+        return Edge.project_id == project_id
 
     @staticmethod
     def _tail_node_boundary_condition(
@@ -107,8 +107,12 @@ class EdgeFilter(BaseFilter):
         # Only applicable if tail node issue type is decision
         # For non-decision issues, this condition should be neutral (True)
         return or_(
-            Edge.tail_node.has(Node.issue.has(Issue.type != Type.DECISION.value)),  # True for non-decision issues
-            Edge.tail_node.has(Node.issue.has(Issue.decision.has(Decision.type == decision_type)))  # Check decision type
+            Edge.tail_node.has(
+                Node.issue.has(Issue.type != Type.DECISION.value)
+            ),  # True for non-decision issues
+            Edge.tail_node.has(
+                Node.issue.has(Issue.decision.has(Decision.type == decision_type))
+            ),  # Check decision type
         )
 
     @staticmethod
@@ -119,8 +123,12 @@ class EdgeFilter(BaseFilter):
         # Only applicable if head node issue type is decision
         # For non-decision issues, this condition should be neutral (True)
         return or_(
-            Edge.head_node.has(Node.issue.has(Issue.type != Type.DECISION.value)),  # True for non-decision issues
-            Edge.head_node.has(Node.issue.has(Issue.decision.has(Decision.type == decision_type)))  # Check decision type
+            Edge.head_node.has(
+                Node.issue.has(Issue.type != Type.DECISION.value)
+            ),  # True for non-decision issues
+            Edge.head_node.has(
+                Node.issue.has(Issue.decision.has(Decision.type == decision_type))
+            ),  # Check decision type
         )
 
     @staticmethod
@@ -131,8 +139,12 @@ class EdgeFilter(BaseFilter):
         # Only applicable if tail node issue type is uncertainty
         # For non-uncertainty issues, this condition should be neutral (True)
         return or_(
-            Edge.tail_node.has(Node.issue.has(Issue.type != Type.UNCERTAINTY.value)),  # True for non-uncertainty issues
-            Edge.tail_node.has(Node.issue.has(Issue.uncertainty.has(Uncertainty.is_key == is_key)))  # Check is_key
+            Edge.tail_node.has(
+                Node.issue.has(Issue.type != Type.UNCERTAINTY.value)
+            ),  # True for non-uncertainty issues
+            Edge.tail_node.has(
+                Node.issue.has(Issue.uncertainty.has(Uncertainty.is_key == is_key))
+            ),  # Check is_key
         )
 
     @staticmethod
@@ -143,6 +155,10 @@ class EdgeFilter(BaseFilter):
         # Only applicable if head node issue type is uncertainty
         # For non-uncertainty issues, this condition should be neutral (True)
         return or_(
-            Edge.head_node.has(Node.issue.has(Issue.type != Type.UNCERTAINTY.value)),  # True for non-uncertainty issues
-            Edge.head_node.has(Node.issue.has(Issue.uncertainty.has(Uncertainty.is_key == is_key)))  # Check is_key
+            Edge.head_node.has(
+                Node.issue.has(Issue.type != Type.UNCERTAINTY.value)
+            ),  # True for non-uncertainty issues
+            Edge.head_node.has(
+                Node.issue.has(Issue.uncertainty.has(Uncertainty.is_key == is_key))
+            ),  # Check is_key
         )

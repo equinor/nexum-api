@@ -39,9 +39,7 @@ from src.models.filters.issues_filter import IssueFilter
 
 
 class IssueService:
-    def _extract_related_entities(
-        self, dtos: list[IssueIncomingDto]
-    ) -> tuple[
+    def _extract_related_entities(self, dtos: list[IssueIncomingDto]) -> tuple[
         list[IssueIncomingDto],
         list[NodeIncomingDto],
         list[Optional[DecisionIncomingDto]],
@@ -60,7 +58,7 @@ class IssueService:
                 nodes.append(
                     NodeIncomingDto(
                         id=node_id,
-                        scenario_id=dto.scenario_id,
+                        project_id=dto.project_id,
                         issue_id=dto.id,
                         node_style=NodeStyleIncomingDto(node_id=node_id),
                     )

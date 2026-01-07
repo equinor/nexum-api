@@ -28,9 +28,9 @@ async def test_get_edge(client: AsyncClient):
 async def test_create_edge(client: AsyncClient):
     payload = [
         EdgeIncomingDto(
+            project_id=GenerateUuid.as_uuid(1),
             tail_id=GenerateUuid.as_uuid(5),
             head_id=GenerateUuid.as_uuid(4),
-            scenario_id=GenerateUuid.as_uuid(3),
         ).model_dump(mode="json")
     ]
 
@@ -42,14 +42,15 @@ async def test_create_edge(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_update_edge(client: AsyncClient):
+    edge_id = GenerateUuid.as_uuid(20)  # This should match an existing edge
     new_tail_id = GenerateUuid.as_uuid(2)
     new_head_id = GenerateUuid.as_uuid(8)
     payload = [
         EdgeIncomingDto(
-            id=GenerateUuid.as_uuid(8),
+            id=edge_id,
+            project_id=GenerateUuid.as_uuid(1),
             tail_id=new_tail_id,
             head_id=new_head_id,
-            scenario_id=GenerateUuid.as_uuid(3),
         ).model_dump(mode="json")
     ]
 
@@ -65,6 +66,7 @@ async def test_delete_edge(client: AsyncClient):
     response = await client.delete(f"/edges/{GenerateUuid.as_string(2)}")
     assert response.status_code == 200, f"Response content: {response.content}"
 
+
 @pytest.mark.asyncio
 async def test_delete_edges(client: AsyncClient):
     ids = [GenerateUuid.as_string(3), GenerateUuid.as_string(4)]
@@ -73,4 +75,6 @@ async def test_delete_edges(client: AsyncClient):
 
     for id in ids:
         response = await client.get(f"/edges/{id}")
-        assert response.status_code == 404, f"Edge with id: {id} found, but should have been deleted"
+        assert (
+            response.status_code == 404
+        ), f"Edge with id: {id} found, but should have been deleted"
