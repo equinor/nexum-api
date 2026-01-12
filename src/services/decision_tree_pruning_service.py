@@ -19,10 +19,6 @@ class PruningContext:
     current_path: Set[uuid.UUID]
     solution: SolutionDto
     
-    def __post_init__(self):
-        if self.current_path is None:
-            self.current_path = set()
-
     def add_to_path(self, node_id: uuid.UUID) -> None:
         """Add a node to the current path."""
         self.current_path.add(node_id)
@@ -68,7 +64,7 @@ class TreePruner(ABC):
             return self.visit_uncertainty_node(node, context)
 
 
-class DecisionTreePruningError(Exception):
+class DecisionTreePruningException(Exception):
     """Custom exception for decision tree pruning errors."""
     pass
 
@@ -81,11 +77,18 @@ class OptimalDecisionTreePruner(TreePruner):
     
     def visit_decision_node(self, node: DecisionTreeDTO, context: PruningContext) -> Optional[DecisionTreeDTO]:
         """Prune decision node to keep only the optimal option."""
+        if (
+            isinstance(node.tree_node.issue, EndPointNodeDto) or 
+            not node.children or 
+            not node.tree_node.issue.decision
+        ):
+            raise DecisionTreePruningException("Invalid decision node visited")
+        
         optimal_decisions = context.solution.get_all_optimal_decisions()
         optimal_decision = self._find_optimal_decision(node, optimal_decisions, context)
         
         if optimal_decision is None:
-            raise DecisionTreePruningError(
+            raise DecisionTreePruningException(
                 f"No optimal decision found for node {node.tree_node.issue.name}"
             )
         
@@ -106,14 +109,24 @@ class OptimalDecisionTreePruner(TreePruner):
     
     def visit_uncertainty_node(self, node: DecisionTreeDTO, context: PruningContext) -> Optional[DecisionTreeDTO]:
         """Process uncertainty node by filtering zero probabilities and recursing."""
-        self._validate_uncertainty_node(node)
+        if (
+            isinstance(node.tree_node.issue, EndPointNodeDto) or 
+            not node.children or 
+            not node.tree_node.issue.uncertainty
+        ):
+            raise DecisionTreePruningException("Invalid uncertainty node visited")
+            
         self._align_probabilities_with_outcomes(node)
         self._remove_zero_probability_outcomes(node)
+
         
         # Recurse through all remaining outcomes
         child: DecisionTreeDTO
         outcome: OutcomeOutgoingDto
-        for child, outcome in zip(node.children, node.tree_node.issue.uncertainty.outcomes):
+        for child, outcome in zip(
+            node.children, 
+            node.tree_node.issue.uncertainty.outcomes
+        ):
             context.add_to_path(outcome.id)
             try:
                 self.prune(child, context)
@@ -133,16 +146,29 @@ class OptimalDecisionTreePruner(TreePruner):
     
     def _find_option_index(self, node: DecisionTreeDTO, decision_state_id: uuid.UUID) -> int:
         """Find the index of the optimal option in the node's options list."""
+        if (
+            isinstance(node.tree_node.issue, EndPointNodeDto) or 
+            not node.tree_node.issue.decision
+        ):
+            raise DecisionTreePruningException("Invalid decision node visited")
+        
         option_ids = [option.id for option in node.tree_node.issue.decision.options]
         try:
             return option_ids.index(decision_state_id)
         except ValueError:
-            raise DecisionTreePruningError(
+            raise DecisionTreePruningException(
                 f"Optimal decision state {decision_state_id} not found in node options"
             )
     
     def _prune_decision_branches(self, node: DecisionTreeDTO, option_index: int, decision_state_id: uuid.UUID) -> None:
         """Remove non-optimal branches from the decision node."""
+        if (
+            isinstance(node.tree_node.issue, EndPointNodeDto) or 
+            not node.children or 
+            not node.tree_node.issue.decision
+        ):
+            raise DecisionTreePruningException("Invalid decision node visited")
+        
         node.children = [node.children[option_index]]
         
         node.tree_node.issue.decision.options = [
@@ -150,19 +176,16 @@ class OptimalDecisionTreePruner(TreePruner):
             if option.id == decision_state_id
         ]
 
-    def _validate_uncertainty_node(self, node: DecisionTreeDTO) -> None:
-        """Validate that uncertainty node has required data."""
-        if (node.tree_node.issue.uncertainty is None or 
-            not node.tree_node.issue.uncertainty.outcomes or
-            node.children is None or
-            node.tree_node.probabilities is None):
-            raise DecisionTreePruningError(
-                f"Invalid uncertainty node structure for {node.tree_node.issue.name}"
-            )
-    
     @staticmethod
     def _align_probabilities_with_outcomes(node: DecisionTreeDTO) -> None:
         """Sort probabilities to match the order of outcomes."""
+        if (
+            isinstance(node.tree_node.issue, EndPointNodeDto) or 
+            not node.tree_node.issue.uncertainty or
+            not node.tree_node.probabilities
+        ):
+            raise DecisionTreePruningException("Invalid uncertainty node visited")
+        
         outcome_order = {
             outcome.id: i 
             for i, outcome in enumerate(node.tree_node.issue.uncertainty.outcomes)
@@ -173,7 +196,17 @@ class OptimalDecisionTreePruner(TreePruner):
     
     def _remove_zero_probability_outcomes(self, node: DecisionTreeDTO) -> None:
         """Remove outcomes with zero probability."""
-        items_to_remove = []
+        if (
+            isinstance(node.tree_node.issue, EndPointNodeDto) or 
+            not node.children or
+            not node.tree_node.issue.uncertainty or
+            not node.tree_node.probabilities
+        ):
+            raise DecisionTreePruningException("Invalid uncertainty node visited")
+        
+        items_to_remove: list[
+            tuple[DecisionTreeDTO, ProbabilityDto, OutcomeOutgoingDto]
+        ]  = []
 
         child: DecisionTreeDTO
         prob: ProbabilityDto

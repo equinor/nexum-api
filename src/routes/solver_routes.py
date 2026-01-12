@@ -19,7 +19,7 @@ async def get_optimal_decisions_for_scenario(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/solvers/scenario/{scenario_id}/as_tree")
+@router.get("/solvers/scenario/{scenario_id}/decision_tree")
 async def get_optimal_decisions_for_scenario_as_tree(
     scenario_id: uuid.UUID,
     solver_service: SolverService = Depends(get_solver_service),
