@@ -1,8 +1,5 @@
 import uuid
 import pyagrum as gum # type: ignore
-import numpy as np
-from pydantic import BaseModel
-from numpy.typing import NDArray
 from itertools import product
 from src.constants import Type
 from src.utils.discrete_probability_array_manager import DiscreteProbabilityArrayManager
@@ -16,7 +13,7 @@ from src.dtos.model_solution_dtos import (
     DecisionSolution,
     SolutionDto,
 )
-from src.services.decision_tree.decision_tree_creator import DecisionTreeCreator, DecisionTreeGraph, DecisionTreeDTO, EndPointNodeDto
+from src.services.decision_tree.decision_tree_creator import DecisionTreeCreator
 from typing import TypeVar, Optional
 
 T = TypeVar('T', OptionOutgoingDto, OutcomeOutgoingDto)
@@ -78,13 +75,13 @@ class PyagrumSolver:
         return [state for state in states if str(state.id) == state_id][0]
 
     def _pyagrum_optimal_decision_argmax(self, ie: gum.ShaferShenoyLIMIDInference, decision_issue_id: str) -> list[dict[str, int]]:
-        return ie.optimalDecision(decision_issue_id).argmax()[0]
+        return ie.optimalDecision(decision_issue_id).argmax()[0] # type: ignore
     
     def _pyagrum_get_mean_utility(self, ie: gum.ShaferShenoyLIMIDInference, node_name: str) -> float:
-        return ie.meanVar(node_name)["mean"]
+        return ie.meanVar(node_name)["mean"] # type: ignore
     
     def _pyagrum_get_node_labels(self, node_identifier: str|int) -> tuple[str]:
-        return self.diagram.variable(node_identifier).labels()
+        return self.diagram.variable(node_identifier).labels() # type: ignore
     
     def get_optimal_decisions(self, ie: gum.ShaferShenoyLIMIDInference, decision_issue_id: str):
         pyagrum_result: list[dict[str, int]] = self._pyagrum_optimal_decision_argmax(ie, decision_issue_id)
@@ -238,9 +235,12 @@ class PyagrumSolver:
             for utility in issue.utility.discrete_utilities:
                 parents = [str(option_id) for option_id in utility.parent_option_ids] + [str(outcome_id) for outcome_id in utility.parent_outcome_ids]
                 if all([x in parents for x in combination]):
-                    assign = {self.diagram.variable(parent_id).name(): state for parent_id, state in zip(parent_ids, combination)} # type: ignore
-                    self.diagram.utility(node_id)[assign] = utility.utility_value
-        
+                    assign = {
+                        self.diagram.variable(parent_id).name(): state # type: ignore
+                        for parent_id, state in zip(parent_ids, combination)
+                    } # type: ignore
+                    self.diagram.utility(node_id)[assign] = utility.utility_value # type: ignore
+
     def add_virtual_utility_node(self, issue: IssueOutgoingDto):
         if issue.type == Type.UTILITY.value:
             return
