@@ -67,72 +67,81 @@ class DecisionTreeRecusivePruning:
         if set(parent_ids).issubset(self.current_path):
             return True
         return False 
+    
+    def _handle_decision_node(self, current_node: DecisionTreeDTO, solution: SolutionDto ):
+        optimal_decisions = solution.get_all_optimal_decisions()
+        decision_state_id = None
+        correct_option_index: Optional[int] = None
+        
+        # find the solution for the decision node given the current path
+        for decision in optimal_decisions:
+            decision.parent_states
+            if decision.decision_id == current_node.tree_node.issue.id and self._parents_check(decision):
+                decision_state_id = decision.state.id
+                self.current_path.add(decision.state.id) # path for decision
+                correct_option_index = [x.id for x in current_node.tree_node.issue.decision.options].index(decision.state.id)
+                break
+        if correct_option_index is None:
+            raise Exception(f"solution for decision node {current_node.tree_node.issue.name} not found")
+        # prune tree to remove none optimal paths
+        current_node.children = [current_node.children[correct_option_index]]
+        current_node.tree_node.issue.decision.options = [
+            option 
+            for option in current_node.tree_node.issue.decision.options 
+            if option.id == decision_state_id
+        ]
+        # recursion call
+        self.rec(current_node.children[0], solution)
+        if decision_state_id:
+            self.current_path.remove(decision_state_id)
+        return current_node
+    
+    def _handle_uncertainty_node(self, current_node: DecisionTreeDTO, solution: SolutionDto):
+        if (
+            current_node.tree_node.issue.uncertainty is None 
+            or current_node.tree_node.issue.uncertainty.outcomes.__len__() == 0
+            or current_node.children is None
+            or current_node.tree_node.probabilities is None
+        ):
+                raise Exception("Invalid decision tree path")
+        # sort the probabilities to match the order of outcomes
+        outcome_order = {outcome.id: i for i, outcome in enumerate(current_node.tree_node.issue.uncertainty.outcomes)}
+        current_node.tree_node.probabilities.sort(key=lambda prob: outcome_order.get(prob.outcome_id, float('inf')))
+
+        child: DecisionTreeDTO
+        prob: ProbabilityDto
+        outcome: OutcomeOutgoingDto
+        for child, prob, outcome in zip(
+            current_node.children, 
+            current_node.tree_node.probabilities, 
+            current_node.tree_node.issue.uncertainty.outcomes
+        ):
+            if prob.probability_value == 0:
+                current_node.tree_node.issue.uncertainty.outcomes.remove(outcome)
+                current_node.tree_node.probabilities.remove(prob)
+                current_node.children.remove(child)
+            
+        for child, prob, outcome in zip(
+            current_node.children, 
+            current_node.tree_node.probabilities, 
+            current_node.tree_node.issue.uncertainty.outcomes
+        ):
+            self.current_path.add(outcome.id) # path for uncertainty
+            # recursion call
+            self.rec(child, solution)
+            self.current_path.remove(outcome.id)
+        return current_node
 
     def rec(self, current_node: DecisionTreeDTO, solution: SolutionDto) -> Optional[DecisionTreeDTO]:
-        optimal_decisions = solution.get_all_optimal_decisions()
         # if end node return
         if isinstance(current_node.tree_node.issue, EndPointNodeDto):
             return
         # Decision node
         if current_node.tree_node.issue.type == Type.DECISION.value and current_node.tree_node.issue. decision is not None and current_node.children:
-            decision_state_id = None
-            correct_option_index: Optional[int] = None
+            current_node = self._handle_decision_node(current_node, solution)
             
-            # find the solution for the decision node given the current path
-            for decision in optimal_decisions:
-                decision.parent_states
-                if decision.decision_id == current_node.tree_node.issue.id and self._parents_check(decision):
-                    decision_state_id = decision.state.id
-                    self.current_path.add(decision.state.id) # path for decision
-                    correct_option_index = [x.id for x in current_node.tree_node.issue.decision.options].index(decision.state.id)
-                    break
-            if correct_option_index is None:
-                raise Exception(f"solution for decision node {current_node.tree_node.issue.name} not found")
-            # prune tree to remove none optimal paths
-            current_node.children = [current_node.children[correct_option_index]]
-            current_node.tree_node.issue.decision.options = [
-                option 
-                for option in current_node.tree_node.issue.decision.options 
-                if option.id == decision_state_id
-            ]
-            # recursion call
-            self.rec(current_node.children[0], solution)
-            if decision_state_id:
-                self.current_path.remove(decision_state_id)
         # uncertainty node
         else:
-            if (
-                current_node.tree_node.issue.uncertainty is None 
-                or current_node.tree_node.issue.uncertainty.outcomes.__len__() == 0
-                or current_node.children is None
-                or current_node.tree_node.probabilities is None
-            ):
-                    raise Exception("Invalid decision tree path")
-            # sort the probabilities to match the order of outcomes
-            outcome_order = {outcome.id: i for i, outcome in enumerate(current_node.tree_node.issue.uncertainty.outcomes)}
-            current_node.tree_node.probabilities.sort(key=lambda prob: outcome_order.get(prob.outcome_id, float('inf')))
-
-            child: DecisionTreeDTO
-            prob: ProbabilityDto
-            outcome: OutcomeOutgoingDto
-            for child, prob, outcome in zip(
-                current_node.children, 
-                current_node.tree_node.probabilities, 
-                current_node.tree_node.issue.uncertainty.outcomes
-            ):
-                if prob.probability_value == 0:
-                    current_node.tree_node.issue.uncertainty.outcomes.remove(outcome)
-                    current_node.tree_node.probabilities.remove(prob)
-                    current_node.children.remove(child)
-                
-            for child, prob, outcome in zip(
-                current_node.children, 
-                current_node.tree_node.probabilities, 
-                current_node.tree_node.issue.uncertainty.outcomes
-            ):
-                self.current_path.add(outcome.id) # path for uncertainty
-                # recursion call
-                self.rec(child, solution)
-                self.current_path.remove(outcome.id)
+            current_node = self._handle_uncertainty_node(current_node, solution)
         return current_node
     
