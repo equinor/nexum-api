@@ -46,10 +46,11 @@ class PyagrumSolver:
         return sorted(dtos, key=lambda x: x.id.__str__())
     
     def _find_state(self, state_id: str, issues: Optional[list[IssueOutgoingDto]] = None) -> OptionOutgoingDto|OutcomeOutgoingDto:
+        """Returns the option/outcome that matches the state id. Looks through the issues variable if included, otherwise looks through all issues in the model."""
         states: list[OptionOutgoingDto|OutcomeOutgoingDto] = []
         if issues:
-            [states.extend(issue.decision.options) for issue in self.issues if issue.decision is not None]
-            [states.extend(issue.uncertainty.outcomes) for issue in self.issues if issue.uncertainty is not None]    
+            [states.extend(issue.decision.options) for issue in issues if issue.decision is not None]
+            [states.extend(issue.uncertainty.outcomes) for issue in issues if issue.uncertainty is not None]    
         else:
             [states.extend(issue.decision.options) for issue in self.issues if issue.decision is not None]
             [states.extend(issue.uncertainty.outcomes) for issue in self.issues if issue.uncertainty is not None]    
@@ -57,18 +58,20 @@ class PyagrumSolver:
         return [state for state in states if str(state.id) == state_id][0]
     
     def _find_state_decision(self, state_id: str, issues: Optional[list[IssueOutgoingDto]] = None) -> OptionOutgoingDto:
+        """Returns the option that matches the state id. Looks through the issues variable if included, otherwise looks through all issues in the model."""
         states: list[OptionOutgoingDto] = []
         if issues:
-            [states.extend(issue.decision.options) for issue in self.issues if issue.decision is not None]
+            [states.extend(issue.decision.options) for issue in issues if issue.decision is not None]
         else:
             [states.extend(issue.decision.options) for issue in self.issues if issue.decision is not None]
         
         return [state for state in states if str(state.id) == state_id][0]
     
     def _find_state_uncertainty(self, state_id: str, issues: Optional[list[IssueOutgoingDto]] = None) -> OutcomeOutgoingDto:
+        """Returns the outcome that matches the state id. Looks through the issues variable if included, otherwise looks through all issues in the model."""
         states: list[OutcomeOutgoingDto] = []
         if issues:
-            [states.extend(issue.uncertainty.outcomes) for issue in self.issues if issue.uncertainty is not None]    
+            [states.extend(issue.uncertainty.outcomes) for issue in issues if issue.uncertainty is not None]    
         else:
             [states.extend(issue.uncertainty.outcomes) for issue in self.issues if issue.uncertainty is not None]    
         
