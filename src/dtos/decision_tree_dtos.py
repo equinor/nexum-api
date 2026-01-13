@@ -23,11 +23,11 @@ class ProbabilityDto(BaseModel):
     discrete_probability_id: uuid.UUID
 
 class UtilityDTDto(BaseModel):
-    branch_name: str
-    branch_id: uuid.UUID
+    option_name: Optional[str] = None
+    option_id: Optional[uuid.UUID] = None
+    outcome_name: Optional[str] = None
+    outcome_id: Optional[uuid.UUID] = None
     utility_value: float
-    discrete_utility_id: Optional[uuid.UUID] = None   
-
 
 class TreeNodeDto(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
