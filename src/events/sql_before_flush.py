@@ -1,7 +1,7 @@
 from typing import Any
 from sqlalchemy import event
 from sqlalchemy.orm import Session
-from constants import SessionInfoParameters
+from src.constants import SessionInfoParameters
 from src.events.discrete_table_event_handler import DiscreteTableEventHandler
 
 
