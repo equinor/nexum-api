@@ -59,6 +59,13 @@ class ProjectDuplicationService:
         # Generate all ID mappings upfront
         self.generate_id_mappings(list(original_project.issues), mappings)
 
+        await self.duplicate_unassigned_issues(
+            session, original_project, new_project_id, mappings, current_user
+        )
+        await self.duplicate_fact_issues(
+            session, original_project, new_project_id, mappings, current_user
+        )
+
         # Duplicate all issue types
         await self.duplicate_decision_issues(
             session, original_project, new_project_id, mappings, current_user

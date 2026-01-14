@@ -2,6 +2,10 @@ import uuid
 from enum import Enum
 
 
+class DisableSessionEvent(str, Enum):
+    IS_EVENT_DISABLED = "is_session_disabled"
+
+
 class Type(str, Enum):
     UNASSIGNED = "Unassigned"
     DECISION = "Decision"
@@ -34,18 +38,22 @@ class Boundary(str, Enum):
     ON = "on"
     OUT = "out"
 
+
 class DecisionHierarchy(str, Enum):
     POLICY = "Policy"
     FOCUS = "Focus"
     TACTICAL = "Tactical"
+
 
 class DatabaseConstants(int, Enum):
     MAX_SHORT_STRING_LENGTH = 60
     MAX_LONG_STRING_LENGTH = 600
     FLOAT_PRECISION = 53
 
+
 class DtoConstants(int, Enum):
     DECIMAL_PLACES = 14
+
 
 class NodeStates(str, Enum):
     OPTION = "option"
@@ -86,4 +94,5 @@ class SwaggerDocumentationConstants:
 class PageSize:
     DEFAULT: int = 1000000
 
-default_value_metric_id = uuid.uuid5(uuid.NAMESPACE_DNS, 'default value metric')
+
+default_value_metric_id = uuid.uuid5(uuid.NAMESPACE_DNS, "default value metric")

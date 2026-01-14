@@ -10,7 +10,7 @@ from src.dependencies import get_project_duplication_service
 from src.services.user_service import get_current_user
 from src.dtos.user_dtos import UserIncomingDto
 from src.dependencies import get_db
-
+from src.constants import DisableSessionEvent
 
 router = APIRouter(tags=["projects"])
 
@@ -29,8 +29,7 @@ async def duplicate_project(
     The duplicated Project will have a new Id.
     """
     try:
-        IS_EVENT_DISABLED = "is_event_disabled"
-        session.info[IS_EVENT_DISABLED] = True
+        session.info[DisableSessionEvent.IS_EVENT_DISABLED.value] = True
         result = await project_duplication_service.project_duplication(session, id, current_user)
         await session.commit()
         return result
