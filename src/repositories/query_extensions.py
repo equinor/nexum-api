@@ -123,7 +123,6 @@ class QueryExtensions:
     @staticmethod
     def load_project_with_relationships() -> list[_AbstractLoad]:
         return [
-            selectinload(Project.opportunities),
             selectinload(Project.objectives),
             selectinload(Project.nodes),
             selectinload(Project.edges),
