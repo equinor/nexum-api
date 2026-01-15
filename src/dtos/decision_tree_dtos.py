@@ -12,7 +12,7 @@ class EdgeUUIDDto(BaseModel):
 
 class EndPointNodeDto(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    scenario_id: uuid.UUID
+    project_id: uuid.UUID
     type: str = "EndPoint"
 
 
@@ -28,9 +28,11 @@ class TreeNodeDto(BaseModel):
     issue: IssueOutgoingDto | EndPointNodeDto
     probabilities: Optional[list[ProbabilityDto]] = None
 
+
 class DecisionTreeDTO(BaseModel):
     tree_node: TreeNodeDto
     children: Optional[List["DecisionTreeDTO"]] = None
+
 
 class PartialOrderDTO(BaseModel):
     # list of issue ids

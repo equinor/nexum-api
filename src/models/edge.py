@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 import uuid
 from sqlalchemy import ForeignKey
 from src.models.guid import GUID
@@ -7,9 +8,11 @@ from sqlalchemy.orm import (
     mapped_column,
 )
 from src.models.base import Base
-from src.models.node import Node
-from src.models.scenario import Scenario
 from src.models.base_entity import BaseEntity
+
+if TYPE_CHECKING:
+    from src.models.project import Project
+    from src.models.node import Node
 
 
 class Edge(Base, BaseEntity):
@@ -17,21 +20,23 @@ class Edge(Base, BaseEntity):
 
     id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True)
 
-    tail_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey(Node.id), index=True)
-    head_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey(Node.id), index=True)
-    scenario_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey(Scenario.id), index=True)
+    tail_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("node.id"), index=True)
+    head_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("node.id"), index=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("project.id"), index=True)
 
-    scenario: Mapped[Scenario] = relationship(Scenario, foreign_keys=[scenario_id])
+    project: Mapped["Project"] = relationship(
+        "Project", foreign_keys=[project_id], back_populates="edges"
+    )
 
-    tail_node: Mapped[Node] = relationship(
-        Node,
-        primaryjoin=tail_id == Node.id,
+    tail_node: Mapped["Node"] = relationship(
+        "Node",
+        foreign_keys=[tail_id],
         back_populates="tail_edges",
     )
 
-    head_node: Mapped[Node] = relationship(
-        Node,
-        primaryjoin=head_id == Node.id,
+    head_node: Mapped["Node"] = relationship(
+        "Node",
+        foreign_keys=[head_id],
         back_populates="head_edges",
     )
 
@@ -40,9 +45,9 @@ class Edge(Base, BaseEntity):
         id: uuid.UUID,
         tail_node_id: uuid.UUID,
         head_node_id: uuid.UUID,
-        scenario_id: uuid.UUID,
+        project_id: uuid.UUID,
     ):
         self.id = id
         self.tail_id = tail_node_id
         self.head_id = head_node_id
-        self.scenario_id = scenario_id
+        self.project_id = project_id

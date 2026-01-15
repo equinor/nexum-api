@@ -29,7 +29,7 @@ async def test_get_objective(client: AsyncClient):
 async def test_create_objective(client: AsyncClient):
     payload = [
         ObjectiveIncomingDto(
-            scenario_id=GenerateUuid.as_uuid(1), name=str(uuid4()), description=str(uuid4())
+            project_id=GenerateUuid.as_uuid(1), name=str(uuid4()), description=str(uuid4())
         ).model_dump(mode="json")
     ]
 
@@ -42,13 +42,13 @@ async def test_create_objective(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_update_objective(client: AsyncClient):
     new_name = str(uuid4())
-    new_scenario_id = GenerateUuid.as_uuid(3)
+    new_project_id = GenerateUuid.as_uuid(3)
     payload = [
         ObjectiveIncomingDto(
             id=GenerateUuid.as_uuid(3),
             description=str(uuid4()),
             name=new_name,
-            scenario_id=new_scenario_id,
+            project_id=new_project_id,
         ).model_dump(mode="json")
     ]
 
@@ -56,15 +56,14 @@ async def test_update_objective(client: AsyncClient):
     assert response.status_code == 200, f"Response content: {response.content}"
 
     response_content = parse_response_to_dtos_test(response, ObjectiveOutgoingDto)
-    assert (
-        response_content[0].name == new_name and response_content[0].scenario_id == new_scenario_id
-    )
+    assert response_content[0].name == new_name and response_content[0].project_id == new_project_id
 
 
 @pytest.mark.asyncio
 async def test_delete_objective(client: AsyncClient):
     response = await client.delete(f"/objectives/{GenerateUuid.as_string(2)}")
     assert response.status_code == 200, f"Response content: {response.content}"
+
 
 @pytest.mark.asyncio
 async def test_delete_objectives(client: AsyncClient):
@@ -74,4 +73,6 @@ async def test_delete_objectives(client: AsyncClient):
 
     for id in ids:
         response = await client.get(f"/objectives/{id}")
-        assert response.status_code == 404, f"Objective with id: {id} found, but should have been deleted"
+        assert (
+            response.status_code == 404
+        ), f"Objective with id: {id} found, but should have been deleted"

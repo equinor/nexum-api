@@ -11,16 +11,16 @@ executor = ThreadPoolExecutor()
 class SolverService:
     def __init__(
         self,
-        scenario_service: ScenarioService,
+        project_service: ProjectService,
     ):
-        self.scenario_service = scenario_service
+        self.project_service = project_service
 
-    async def find_optimal_decision_pyagrum(self, scenario_id: uuid.UUID):
+    async def find_optimal_decision_pyagrum(self, project_id: uuid.UUID):
         async for session in sessionmanager.get_session():
             (
                 issues,
                 edges,
-            ) = await self.scenario_service.get_influence_diagram_data(session, scenario_id)
+            ) = await self.project_service.get_influence_diagram_data(session, project_id)
 
         solution = await PyagrumSolver().find_optimal_decisions(issues=issues, edges=edges)
 

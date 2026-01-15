@@ -21,7 +21,7 @@ class ObjectiveRepository(BaseRepository[Objective, uuid.UUID]):
         for n, entity_to_update in enumerate(entities_to_update):
             entity = entities[n]
             entity_to_update.name = entity.name
-            entity_to_update.scenario_id = entity.scenario_id
+            entity_to_update.project_id = entity.project_id
             entity_to_update.description = entity.description
 
         await self.session.flush()

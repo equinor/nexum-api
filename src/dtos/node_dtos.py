@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class NodeDto(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    scenario_id: uuid.UUID
+    project_id: uuid.UUID
     issue_id: uuid.UUID
     name: Annotated[str, Field(max_length=DatabaseConstants.MAX_SHORT_STRING_LENGTH.value)] = ""
 
@@ -42,7 +42,7 @@ class NodeMapper:
         return NodeOutgoingDto(
             id=entity.id,
             issue_id=entity.issue_id,
-            scenario_id=entity.scenario_id,
+            project_id=entity.project_id,
             name=entity.name,
             issue=IssueMapper.to_outgoing_dto_via_node(entity.issue),
             node_style=NodeStyleMapper.to_outgoing_dto(entity.node_style),
@@ -53,7 +53,7 @@ class NodeMapper:
         return NodeViaIssueOutgoingDto(
             id=entity.id,
             issue_id=entity.issue_id,
-            scenario_id=entity.scenario_id,
+            project_id=entity.project_id,
             name=entity.name,
             node_style=NodeStyleMapper.to_outgoing_dto(entity.node_style),
         )
@@ -63,7 +63,7 @@ class NodeMapper:
         return Node(
             id=dto.id,
             issue_id=dto.issue_id,
-            scenario_id=dto.scenario_id,
+            project_id=dto.project_id,
             name=dto.name,
             node_style=NodeStyleMapper.to_entity(dto.node_style) if dto.node_style else None,
         )

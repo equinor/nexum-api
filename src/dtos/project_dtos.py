@@ -2,19 +2,14 @@ import uuid
 from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Annotated
+from src.dtos.objective_dtos import ObjectiveMapper, ObjectiveOutgoingDto, ObjectiveViaProjectDto
 from src.dtos.project_roles_dtos import (
     ProjectRoleCreateDto,
     ProjectRoleIncomingDto,
     ProjectRoleMapper,
 )
 from src.models.project import Project, default_endtime
-from src.dtos.scenario_dtos import (
-    ScenarioMapper,
-    ScenarioCreateViaProjectDto,
-    ScenarioIncomingDto,
-    ScenarioOutgoingDto,
-    PopulatedScenarioDto,
-)
+
 from src.constants import DatabaseConstants
 
 from src.dtos.project_roles_dtos import ProjectRoleOutgoingDto
@@ -26,28 +21,33 @@ class ProjectDto(BaseModel):
     opportunityStatement: Annotated[
         str, Field(max_length=DatabaseConstants.MAX_LONG_STRING_LENGTH.value)
     ] = ""
+
+    parent_project_id: uuid.UUID | None = None
+    parent_project_name: Annotated[
+        str | None, Field(max_length=DatabaseConstants.MAX_SHORT_STRING_LENGTH.value)
+    ] = None
     public: bool = False
     end_date: datetime = Field(default_factory=default_endtime)
 
 
 class ProjectCreateDto(ProjectDto):
+    objectives: list[ObjectiveViaProjectDto] = []
     users: list[ProjectRoleCreateDto]
-    scenarios: list[ScenarioCreateViaProjectDto]
 
 
 class ProjectIncomingDto(ProjectDto):
+    objectives: list[ObjectiveViaProjectDto] = []
     users: list[ProjectRoleIncomingDto]
-    scenarios: list[ScenarioIncomingDto]
 
 
 class ProjectOutgoingDto(ProjectDto):
+    objectives: list[ObjectiveOutgoingDto] = []
     users: list[ProjectRoleOutgoingDto]
-    scenarios: list[ScenarioOutgoingDto]
 
 
 class PopulatedProjectDto(ProjectDto):
+    objectives: list[ObjectiveOutgoingDto] = []
     users: list[ProjectRoleOutgoingDto]
-    scenarios: list[PopulatedScenarioDto]
 
 
 class ProjectMapper:
@@ -55,13 +55,15 @@ class ProjectMapper:
     def from_create_to_entity(dto: ProjectCreateDto, user_id: int) -> Project:
         return Project(
             id=dto.id,
+            parent_project_name=dto.parent_project_name,
+            parent_project_id=dto.parent_project_id,
             name=dto.name,
             opportunityStatement=dto.opportunityStatement,
             user_id=user_id,
             public=dto.public,
             end_date=dto.end_date,
+            objectives=ObjectiveMapper.via_project_to_entities(dto.objectives, user_id, dto.id),
             project_role=[],
-            scenarios=[],  # must create the project first
         )
 
     @staticmethod
@@ -69,11 +71,13 @@ class ProjectMapper:
         return ProjectOutgoingDto(
             id=entity.id,
             name=entity.name,
+            parent_project_id=entity.parent_project_id,
+            parent_project_name=entity.parent_project_name,
             opportunityStatement=entity.opportunityStatement,
+            objectives=ObjectiveMapper.to_outgoing_dtos(entity.objectives),
             public=entity.public,
             end_date=entity.end_date,
             users=ProjectRoleMapper.to_outgoing_dtos(entity.project_role),
-            scenarios=ScenarioMapper.to_outgoing_dtos(entity.scenarios),
         )
 
     @staticmethod
@@ -81,24 +85,28 @@ class ProjectMapper:
         return PopulatedProjectDto(
             id=entity.id,
             name=entity.name,
+            parent_project_id=entity.parent_project_id,
+            parent_project_name=entity.parent_project_name,
             opportunityStatement=entity.opportunityStatement,
             public=entity.public,
             end_date=entity.end_date,
+            objectives=ObjectiveMapper.to_outgoing_dtos(entity.objectives),
             users=ProjectRoleMapper.to_outgoing_dtos(entity.project_role),
-            scenarios=ScenarioMapper.to_populated_dtos(entity.scenarios),
         )
 
     @staticmethod
     def to_project_entity(dto: ProjectIncomingDto, user_id: int) -> Project:
         return Project(
             id=dto.id,
+            parent_project_id=dto.parent_project_id,
+            parent_project_name=dto.parent_project_name,
             name=dto.name,
             opportunityStatement=dto.opportunityStatement,
+            objectives=ObjectiveMapper.via_project_to_entities(dto.objectives, user_id, dto.id),
             user_id=user_id,
             public=dto.public,
             end_date=dto.end_date,
             project_role=ProjectRoleMapper.to_project_role_entities(dto.users),
-            scenarios=ScenarioMapper.to_entities(dto.scenarios, user_id),
         )
 
     @staticmethod

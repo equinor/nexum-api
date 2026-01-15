@@ -2,6 +2,7 @@ import uuid
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.filters.objective_filter import ObjectiveFilter
 from src.models.objective import Objective
 from src.dtos.objective_dtos import (
     ObjectiveIncomingDto,
@@ -54,10 +55,15 @@ class ObjectiveService:
         return result
 
     async def get_all(
-        self, session: AsyncSession, odata_query: Optional[str] = None
+        self,
+        session: AsyncSession,
+        odata_query: Optional[str] = None,
+        filter: Optional[ObjectiveFilter] = None,
     ) -> list[ObjectiveOutgoingDto]:
+        model_filter = filter.construct_filters() if filter else []
         objectives: list[Objective] = await ObjectiveRepository(session).get_all(
-            odata_query=odata_query
+            model_filter=model_filter,
+            odata_query=odata_query,
         )
         result = ObjectiveMapper.to_outgoing_dtos(objectives)
         return result

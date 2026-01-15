@@ -13,7 +13,6 @@ from src.models.base import Base
 from src.config import config
 from src.seed_database import (
     seed_database,
-    create_single_project_with_scenario,
     create_decision_tree_symmetry_DT_from_ID,
     create_decision_tree_symmetry_DT,
 )
@@ -21,18 +20,18 @@ from src.database import (
     DatabaseConnectionStrings,
     get_connection_string_and_token,
     build_connection_url,
-    validate_default_scenarios,
     ensure_default_value_metric_exists,
 )
 from src.logger import get_dot_api_logger
 
 # import events to activate them
-from src.events import (
-    before_flush_event_handler, # type: ignore
-    after_flush_event_handler, # type: ignore
-    before_commit_event_handler, # type: ignore
-    after_commit_event_handler, # type: ignore
+from src.events import (  # noqa: F401
+    before_flush_event_handler,
+    after_flush_event_handler,
+    before_commit_event_handler,
+    after_commit_event_handler,
 )
+
 
 class SessionManager:
     """Manages asynchronous DB sessions with connection pooling."""
@@ -57,8 +56,7 @@ class SessionManager:
         )
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            await seed_database(conn, num_projects=10, num_scenarios=10, num_nodes=50)
-            await create_single_project_with_scenario(conn)
+            await seed_database(conn, num_projects=10, num_nodes=50)
             await create_decision_tree_symmetry_DT_from_ID(conn)
             await create_decision_tree_symmetry_DT(conn)
 
@@ -145,7 +143,7 @@ class SessionManager:
     async def _refresh_database_engine(self) -> None:
         """Refresh database engine with new token."""
         await self.dispose_engine()
-        
+
         # Recreate engine with fresh token
         await self._initialize_persistent_db()
         self._initialize_session_factory()
@@ -154,7 +152,9 @@ class SessionManager:
         """Background task to refresh database tokens periodically."""
         while not self._shutdown_event.is_set():
             try:
-                await asyncio.wait_for(self._shutdown_event.wait(), timeout=config.DB_TOKEN_DURATION)
+                await asyncio.wait_for(
+                    self._shutdown_event.wait(), timeout=config.DB_TOKEN_DURATION
+                )
             except asyncio.TimeoutError:
                 try:
                     print("Refreshing database engine")
@@ -170,14 +170,9 @@ class SessionManager:
 
         async for session in self.get_session():
             try:
-                await validate_default_scenarios(session)
-            except Exception as e:
-                self._logger.error(f"Database start task {validate_default_scenarios.__name__} failed: {e}")
-            try:
                 await ensure_default_value_metric_exists(session)
             except Exception as e:
-                self._logger.error(f"Database start task {ensure_default_value_metric_exists.__name__} failed: {e}")
-
+                print(e)
 
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Yield a database session with the correct schema set."""

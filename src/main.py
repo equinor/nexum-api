@@ -1,11 +1,11 @@
 import uvicorn
 from fastapi import FastAPI, status, Depends
 from contextlib import asynccontextmanager
+from src.routes import project_duplication_routes
 from src.routes import project_role_routes
 from src.auth.auth import verify_token
 import src.routes.decision_routes as decision_routes
 import src.routes.edge_routes as edge_routes
-import src.routes.scenario_routes as scenario_routes
 import src.routes.node_routes as node_routes
 import src.routes.objective_routes as objective_routes
 import src.routes.opportunity_routes as opportunity_routes
@@ -85,7 +85,7 @@ async def root():
 app.include_router(user_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(project_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(project_role_routes.router, dependencies=[Depends(verify_token)])
-app.include_router(scenario_routes.router, dependencies=[Depends(verify_token)])
+app.include_router(project_duplication_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(solver_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(issue_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(objective_routes.router, dependencies=[Depends(verify_token)])

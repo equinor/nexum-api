@@ -60,22 +60,6 @@ async def get_all_nodes_from_project(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/scenarios/{scenario_id}/nodes")
-async def get_all_nodes_from_scenario(
-    scenario_id: uuid.UUID,
-    node_service: NodeService = Depends(get_node_service),
-    filter: Optional[str] = Query(None, description=SwaggerDocumentationConstants.FILTER_DOC),
-    session: AsyncSession = Depends(get_db),
-) -> list[NodeOutgoingDto]:
-    try:
-        nodes: list[NodeOutgoingDto] = await node_service.get_all(
-            session, NodeFilter(scenario_ids=[scenario_id]), odata_query=filter
-        )
-        return nodes
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.delete("/nodes/{id}")
 async def delete_node(
     id: uuid.UUID,
@@ -88,6 +72,7 @@ async def delete_node(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.delete("/nodes")
 async def delete_nodes(
     ids: list[uuid.UUID] = Query([]),
@@ -99,6 +84,7 @@ async def delete_nodes(
         await session.commit()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.put("/nodes")
 async def update_nodes(

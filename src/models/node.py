@@ -8,7 +8,6 @@ from sqlalchemy.orm import (
     mapped_column,
 )
 from src.models.base import Base
-from src.models.scenario import Scenario
 from src.models.base_entity import BaseEntity
 from src.constants import DatabaseConstants
 
@@ -16,23 +15,24 @@ if TYPE_CHECKING:
     from src.models import Edge
     from src.models import Issue
     from src.models import NodeStyle
+    from src.models import Project
 
 
 class Node(Base, BaseEntity):
     __tablename__ = "node"
 
     id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True)
-    scenario_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey(Scenario.id), index=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("project.id"), index=True)
     issue_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("issue.id"), index=True)
 
     name: Mapped[str] = mapped_column(
         String(DatabaseConstants.MAX_SHORT_STRING_LENGTH.value), index=True
     )
 
-    scenario: Mapped[Scenario] = relationship(
-        Scenario, foreign_keys=[scenario_id], back_populates="nodes"
+    project: Mapped["Project"] = relationship("Project", back_populates="nodes")
+    issue: Mapped["Issue"] = relationship(
+        "Issue", back_populates="node", cascade="all, delete-orphan", single_parent=True
     )
-    issue: Mapped["Issue"] = relationship("Issue", back_populates="node", cascade="all, delete-orphan", single_parent=True)
 
     head_edges: Mapped[list["Edge"]] = relationship(
         "Edge",
@@ -57,14 +57,14 @@ class Node(Base, BaseEntity):
     def __init__(
         self,
         id: uuid.UUID,
-        scenario_id: uuid.UUID,
+        project_id: uuid.UUID,
         name: str,
         issue_id: Optional[uuid.UUID],
         node_style: Optional["NodeStyle"],
     ):
         self.id = id
 
-        self.scenario_id = scenario_id
+        self.project_id = project_id
         self.name = name
 
         if issue_id:
@@ -89,11 +89,14 @@ class Node(Base, BaseEntity):
         if not isinstance(other, Node):
             return False
         return (
-            self.id == other.id and
-            self.scenario_id == other.scenario_id and
-            self.issue_id == other.issue_id and
-            self.name == other.name and
-            (self.node_style == other.node_style if self.node_style and other.node_style else self.node_style is other.node_style)
+            self.id == other.id
+            and self.issue_id == other.issue_id
+            and self.name == other.name
+            and (
+                self.node_style == other.node_style
+                if self.node_style and other.node_style
+                else self.node_style is other.node_style
+            )
         )
 
     def __hash__(self) -> int:

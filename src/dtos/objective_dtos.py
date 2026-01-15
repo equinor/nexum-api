@@ -15,7 +15,7 @@ class ObjectiveDto(BaseModel):
     description: Annotated[str, Field(max_length=DatabaseConstants.MAX_LONG_STRING_LENGTH.value)]
 
 
-class ObjectiveViaScenarioDto(ObjectiveDto):
+class ObjectiveViaProjectDto(ObjectiveDto):
     """
     Class should only be a property of project when creating the project with objective(s)
     """
@@ -24,12 +24,12 @@ class ObjectiveViaScenarioDto(ObjectiveDto):
 
 
 class ObjectiveIncomingDto(ObjectiveDto):
-    scenario_id: uuid.UUID
+    project_id: uuid.UUID
     type: ObjectiveTypes = ObjectiveTypes.FUNDAMENTAL
 
 
 class ObjectiveOutgoingDto(ObjectiveDto):
-    scenario_id: uuid.UUID
+    project_id: uuid.UUID
     type: str
     created_at: datetime
     updated_at: datetime
@@ -37,12 +37,12 @@ class ObjectiveOutgoingDto(ObjectiveDto):
 
 class ObjectiveMapper:
     @staticmethod
-    def via_scenario_to_entity(
-        dto: ObjectiveViaScenarioDto, user_id: int, senario_id: uuid.UUID
+    def via_project_to_entity(
+        dto: ObjectiveViaProjectDto, user_id: int, project_id: uuid.UUID
     ) -> Objective:
         return Objective(
             id=dto.id,
-            scenario_id=senario_id,
+            project_id=project_id,
             name=dto.name,
             type=dto.type,
             description=dto.description,
@@ -53,7 +53,7 @@ class ObjectiveMapper:
     def to_outgoing_dto(entity: Objective) -> ObjectiveOutgoingDto:
         return ObjectiveOutgoingDto(
             id=entity.id,
-            scenario_id=entity.scenario_id,
+            project_id=entity.project_id,
             name=entity.name,
             type=entity.type,
             description=entity.description,
@@ -65,7 +65,7 @@ class ObjectiveMapper:
     def to_entity(dto: ObjectiveIncomingDto, user_id: int) -> Objective:
         return Objective(
             id=dto.id,
-            scenario_id=dto.scenario_id,
+            project_id=dto.project_id,
             name=dto.name,
             type=dto.type,
             description=dto.description,
@@ -73,12 +73,12 @@ class ObjectiveMapper:
         )
 
     @staticmethod
-    def via_scenario_to_entities(
-        dtos: list[ObjectiveViaScenarioDto],
+    def via_project_to_entities(
+        dtos: list[ObjectiveViaProjectDto],
         user_id: int,
-        scenario_id: uuid.UUID,
+        project_id: uuid.UUID,
     ) -> list[Objective]:
-        return [ObjectiveMapper.via_scenario_to_entity(dto, user_id, scenario_id) for dto in dtos]
+        return [ObjectiveMapper.via_project_to_entity(dto, user_id, project_id) for dto in dtos]
 
     @staticmethod
     def to_outgoing_dtos(
