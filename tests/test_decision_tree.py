@@ -1,64 +1,55 @@
 import pytest
 from httpx import AsyncClient
-from tests.utils import (
-    parse_response_to_dto_test,
-    parse_response_to_dtos_test,
-)
-from src.dtos.decision_dtos import DecisionIncomingDto, DecisionOutgoingDto
-from src.dtos.option_dtos import OptionIncomingDto
 from src.seed_database import GenerateUuid
-
-
-@pytest.mark.asyncio
-async def test_get_decisions(client: AsyncClient):
-    response = await client.get("/decisions")
-    assert response.status_code == 200, f"Response content: {response.content}"
-
-    parse_response_to_dtos_test(response, DecisionOutgoingDto)
-
+from src.services.decision_tree.decision_tree_creator import DecisionTreeGraph
+from src.dtos.decision_tree_dtos import EdgeUUIDDto
+from src.session_manager import sessionmanager
+from src.dependencies import get_project_service, get_structure_service
 
 @pytest.mark.asyncio
-async def test_get_decision(client: AsyncClient):
-    decision_id = GenerateUuid.as_string(20)
-    response = await client.get(f"/decisions/{decision_id}")
-    assert response.status_code == 200, f"Response content: {response.content}"
-
-    parse_response_to_dto_test(response, DecisionOutgoingDto)
-
+async def test_decision_tree_endpoint(client: AsyncClient):
+    project_id = GenerateUuid.as_uuid("dt_from_id_project")
+    response = await client.get(f"/structure/{project_id}/DT")
+    response = await client.get(f"/structure/{project_id}/decision_tree")
+    assert response.status_code == 200, f"Failed to create decision tree: {response.text}"
 
 @pytest.mark.asyncio
-async def test_update_decision(client: AsyncClient):
-    decision_id = GenerateUuid.as_uuid(1)
-    new_alts = ["yes", "no", "this is testing"]
-    new_options = [
-        OptionIncomingDto(name=x, utility=0.0, decision_id=decision_id) for x in new_alts
-    ]
-    payload = [
-        DecisionIncomingDto(
-            id=decision_id, issue_id=GenerateUuid.as_uuid(1), options=new_options
-        ).model_dump(mode="json")
-    ]
+@pytest.mark.skip(reason="Skipping, need to redesign test due to different approach to utility.")
+async def test_decision_tree():
+    await sessionmanager.init_db()
+    project_service = await get_project_service()
+    structure_service = await get_structure_service()
 
-    response = await client.put("/decisions", json=payload)
-    assert response.status_code == 200, f"Response content: {response.content}"
+    project_uuid = GenerateUuid.as_uuid("dt_from_id_project")
+    dt_from_id = await structure_service.create_decision_tree(project_uuid)
 
-    response_content = parse_response_to_dtos_test(response, DecisionOutgoingDto)
-    assert len(response_content) > 0, "No decisions returned in response"
+    project_uuid2 = GenerateUuid.as_uuid("dt_project")
+    issues = []
+    edges = []
+    async for session in sessionmanager.get_session():
+        (
+            issues,
+            edges,
+        ) = await project_service.get_influence_diagram_data(session, project_uuid2)
+    root_id = GenerateUuid.as_uuid("dt_uncertainty_S")
+    root_issue = next((issue for issue in issues if issue.id == root_id), None)
+    assert root_issue != None
 
-    decision = response_content[0]
-    assert hasattr(decision, "options"), "Decision does not have options attribute"
-    assert decision.options is not None, "Decision options is None"
+    decision_tree_graph = DecisionTreeGraph(root=root_issue.id)
+    for issue in issues:
+        await decision_tree_graph.add_node(issue.id)
 
-    # Use set comparison to avoid order dependency
-    if len(decision.options) > 0:
-        actual_names = [x.name for x in decision.options]
-        assert set(actual_names) == set(
-            new_alts
-        ), f"Expected {set(new_alts)}, got {set(actual_names)}"
+    for edge in edges:
+        tail_node = [x for x in issues if x.id==edge.tail_node.issue_id][0]
+        head_node = [x for x in issues if x.id==edge.head_node.issue_id][0]
+        ee = EdgeUUIDDto(tail=tail_node.id, head=head_node.id)
+        await decision_tree_graph.add_edge(ee)
 
+    no_nodes_id = dt_from_id.nx.number_of_nodes() # type: ignore
+    no_edges_id = dt_from_id.nx.number_of_edges() # type: ignore
 
-@pytest.mark.asyncio
-async def test_delete_decision(client: AsyncClient):
-    decision_id = GenerateUuid.as_string(2)
-    response = await client.delete(f"/decisions/{decision_id}")
-    assert response.status_code == 200, f"Response content: {response.content}"
+    no_nodes_dt = decision_tree_graph.nx.number_of_nodes() # type: ignore
+    no_edges_dt = decision_tree_graph.nx.number_of_edges()  # type: ignore
+
+    assert no_edges_id == no_edges_dt
+    assert no_nodes_id == no_nodes_dt

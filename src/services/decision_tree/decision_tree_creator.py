@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import uuid
 import copy
+import itertools
 import networkx as nx
 from typing import Optional, Dict, Any, Union, List, Tuple, Iterator
 from fastapi import HTTPException
@@ -10,12 +11,15 @@ from src.constants import Type
 from src.seed_database import GenerateUuid
 from src.dtos.issue_dtos import IssueOutgoingDto
 from src.dtos.edge_dtos import EdgeOutgoingDto
+from src.dtos.option_dtos import OptionOutgoingDto
+from src.dtos.outcome_dtos import OutcomeOutgoingDto
 from src.dtos.decision_tree_dtos import (
     EdgeUUIDDto,
     EndPointNodeDto,
     DecisionTreeDTO,
     TreeNodeDto,
     ProbabilityDto,
+    UtilityDTDto
 )
 from src.dtos.discrete_probability_dtos import DiscreteProbabilityOutgoingDto
 
@@ -33,6 +37,7 @@ class DecisionTreeGraph:
         self.treenode_lookup: Dict[str, TreeNodeDto] = {}
         self.outcomes_lookup: Dict[str, str] = {}
         self.edge_names: Dict[Tuple[uuid.UUID, uuid.UUID], str] = {}
+        self.utility_lookup : Dict[tuple[str, ...], List[float]] = {}
 
     async def add_node(self, node: uuid.UUID) -> None:
         self.nx.add_node(node)  # type: ignore
@@ -42,9 +47,23 @@ class DecisionTreeGraph:
 
     async def get_parent(self, node: uuid.UUID) -> Optional[uuid.UUID]:
         parents = list(self.nx.predecessors(node))  # type: ignore
-        return parents[0] if len(parents) > 0 else None  # type: ignore
+        return parents[0] if (parents and len(parents) > 0) else None  # type: ignore
+
+    async def populate_utility_lookup(self) -> None:
+        for node in self.treenode_lookup.values():
+            if isinstance(node.issue, EndPointNodeDto) or node.issue.type != Type.UTILITY.value:
+                continue
+            utility = node.issue.utility
+            if utility and utility.discrete_utilities:
+                for discrete_utility in utility.discrete_utilities:
+                    if discrete_utility.utility_value:
+                        parents = tuple(
+                            sorted(p.__str__() for p in discrete_utility.parent_outcome_ids + discrete_utility.parent_option_ids)
+                        )
+                        self.utility_lookup.setdefault(parents, []).append(discrete_utility.utility_value)
 
     async def to_issue_dtos(self) -> Optional[DecisionTreeDTO]:
+        await self.populate_utility_lookup()
         self.edge_names = nx.get_edge_attributes(self.nx, "name")  # type: ignore
         tg = nx.readwrite.json_graph.tree_data(self.nx, self.root)  # type: ignore
         tree_structure = await self.create_decision_tree_dto_from_treenode(tg)  # type: ignore
@@ -76,7 +95,8 @@ class DecisionTreeGraph:
                 children_dtos.append(child_dto)
 
         copy_node = copy.deepcopy(node)
-        copy_node.probabilities = await self.get_probability_value(copy_node)
+        copy_node.probabilities = await self.get_probability_values(copy_node)
+        copy_node.utilities = await self.get_utility_values(copy_node)
         copy_node.id = await self.create_treenode_id(copy_node)
         return await self.get_decision_tree_dto(
             issue=copy_node, children=children_dtos if children_dtos else None
@@ -98,7 +118,7 @@ class DecisionTreeGraph:
         id_string = "root" if id_string == "" else "root" + " - " + id_string
         return GenerateUuid.as_uuid(id_string)
 
-    async def find_matching_dtos(
+    async def find_matching_probabilities_dtos(
         self, object_uuids: list[uuid.UUID], in_dtos: list[DiscreteProbabilityOutgoingDto]
     ):
         out_dtos: list[DiscreteProbabilityOutgoingDto] = []
@@ -108,7 +128,7 @@ class DecisionTreeGraph:
                 out_dtos.append(dto)
         return out_dtos
 
-    async def get_probability_value(self, node: TreeNodeDto) -> Optional[list[ProbabilityDto]]:
+    async def get_probability_values(self, node: TreeNodeDto) -> Optional[list[ProbabilityDto]]:
         treenode_id = node.id
         issue = node.issue
         probability_dtos: list[ProbabilityDto] = []
@@ -123,13 +143,12 @@ class DecisionTreeGraph:
             parent_id = await self.get_parent(treenode_id)
             count = 0
             while parent_id and count < 1000:
-                n = self.edge_names[(parent_id, treenode_id)]
-                parent_labels.append(uuid.UUID(n))
+                parent_labels.append(uuid.UUID(self.edge_names[(parent_id, treenode_id)]))
                 treenode_id = parent_id
                 parent_id = await self.get_parent(treenode_id)
                 count += 1
 
-            discrete_prob_dtos = await self.find_matching_dtos(
+            discrete_prob_dtos = await self.find_matching_probabilities_dtos(
                 parent_labels, issue.uncertainty.discrete_probabilities
             )
 
@@ -143,7 +162,66 @@ class DecisionTreeGraph:
                     )
                     probability_dtos.append(probability_dto)
 
-            return probability_dtos
+        return probability_dtos
+
+    async def get_utility_values(self, node: TreeNodeDto) -> Optional[list[UtilityDTDto]]:
+        issue = node.issue
+        utility_dtos : list[UtilityDTDto] = []
+        if (isinstance(issue, EndPointNodeDto)):
+            return utility_dtos
+
+        if issue.type == Type.UNCERTAINTY.value and issue.uncertainty is not None:
+            outcomes = issue.uncertainty.outcomes
+            for outcome in outcomes:
+                discrete_utility_value = await self.get_discrete_utility_value(node, outcome)
+                utility_dto = UtilityDTDto(outcome_name=outcome.name,
+                                           outcome_id=outcome.id,
+                                           utility_value=outcome.utility + discrete_utility_value)
+                utility_dtos.append(utility_dto)
+
+        if issue.type == Type.DECISION.value and issue.decision is not None:
+            options = issue.decision.options
+            for option in options:
+                discrete_utility_value = await self.get_discrete_utility_value(node, option)
+                utility_dto = UtilityDTDto(option_name=option.name,
+                                           option_id=option.id,
+                                           utility_value=option.utility + discrete_utility_value)
+                utility_dtos.append(utility_dto)
+
+        return utility_dtos
+
+    async def get_discrete_utility_value(self, node: TreeNodeDto, dto : OptionOutgoingDto | OutcomeOutgoingDto) -> float:
+        branch_label = dto.id.__str__()
+        if not any(branch_label in key for key in self.utility_lookup.keys()):
+            return 0
+
+        node_id = node.id
+        branch_labels = [branch_label]
+
+        # Add branch labels for predecessors to the treenode branch
+        parent_id = await self.get_parent(node_id)
+        count = 0
+        while parent_id and count < 1000:
+            branch_labels.append(self.edge_names[(parent_id, node_id)])
+            node_id = parent_id
+            parent_id = await self.get_parent(node_id)
+            count += 1
+
+        # Create list of branch combinations, must include branch label for treenode
+        branch_combinations : list[tuple[str, ...]] = [
+            combo for r in range(2, len(branch_labels) + 1)
+            for combo in itertools.combinations(branch_labels, r)
+            if branch_label in combo]
+
+        # Loop through branch_combinations
+        # and add discrete utility for current treenode (from combinations present in utility_lookup)
+        total_discrete_utility_value = sum(
+                sum(self.utility_lookup[key])
+                for combination in branch_combinations
+                if (key := tuple(sorted(combination))) in self.utility_lookup
+            ) if len(branch_labels) > 1 else 0
+
+        return total_discrete_utility_value
 
 
 class DecisionTreeCreator:
