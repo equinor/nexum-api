@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from src.models.issue import Issue
     from src.models.node import Node
     from src.models.objective import Objective
-    from src.models.opportunity import Opportunity
     from src.models.edge import Edge
 
 from sqlalchemy import DateTime
@@ -46,12 +45,6 @@ class Project(Base, BaseEntity, BaseAuditableEntity):
 
     project_role: Mapped[list["ProjectRole"]] = relationship(
         "ProjectRole",
-        back_populates="project",
-        cascade="all, delete-orphan",
-    )
-
-    opportunities: Mapped[list["Opportunity"]] = relationship(
-        "Opportunity",
         back_populates="project",
         cascade="all, delete-orphan",
     )

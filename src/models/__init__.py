@@ -2,7 +2,6 @@
 
 from src.models.user import User  # type: ignore
 from src.models.project import Project  # type: ignore
-from src.models.opportunity import Opportunity  # type: ignore
 from src.models.objective import Objective  # type: ignore
 from src.models.issue import Issue  # type: ignore
 from src.models.decision import Decision  # type: ignore

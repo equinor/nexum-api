@@ -30,7 +30,7 @@ async def create_projects(
     """
     Endpoint for creating Projects.
     A Scenario must be supplied and will be created after the Project with the appropriate Id.
-    If Objectives/Opportunities are supplied with the Scenario, then they will be created after the Scenario with the appropriate Id.
+    If Objectives are supplied with the Scenario, then they will be created after the Scenario with the appropriate Id.
     """
     try:
         result = list(await project_service.create(session, dtos, current_user))

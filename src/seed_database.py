@@ -10,7 +10,6 @@ from src.models import (
     Node,
     NodeStyle,
     Objective,
-    Opportunity,
     Uncertainty,
     Utility,
     Decision,
@@ -1066,14 +1065,6 @@ async def seed_database(
         objective = add_auditable_fields(objective, user)
         entities.append(objective)
 
-        opportunity = Opportunity(
-            id=project_id,
-            project_id=project_id,
-            description=str(uuid4()),
-            user_id=project.created_by_id,
-        )
-        opportunity = add_auditable_fields(opportunity, user)
-        entities.append(opportunity)
         former_node_id = None
 
         for issue_node_index in range(num_nodes):

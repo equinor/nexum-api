@@ -8,7 +8,6 @@ import src.routes.decision_routes as decision_routes
 import src.routes.edge_routes as edge_routes
 import src.routes.node_routes as node_routes
 import src.routes.objective_routes as objective_routes
-import src.routes.opportunity_routes as opportunity_routes
 import src.routes.uncertainty_routes as uncertainty_routes
 import src.routes.discrete_probability_routes as discrete_probability_routes
 import src.routes.discrete_utility_routes as discrete_utility_routes
@@ -89,7 +88,6 @@ app.include_router(project_duplication_routes.router, dependencies=[Depends(veri
 app.include_router(solver_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(issue_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(objective_routes.router, dependencies=[Depends(verify_token)])
-app.include_router(opportunity_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(node_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(uncertainty_routes.router, dependencies=[Depends(verify_token)])
 app.include_router(discrete_utility_routes.router, dependencies=[Depends(verify_token)])
