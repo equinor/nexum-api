@@ -53,17 +53,20 @@ class ProjectService:
         session: AsyncSession,
         dtos: list[ProjectCreateDto],
         user_dto: UserIncomingDto,
+        is_duplicate: bool = False,
     ) -> list[ProjectOutgoingDto]:
         user = await UserRepository(session).get_or_create(UserMapper.to_entity(user_dto))
-        for dto in dtos:
-            owner_role = ProjectRoleCreateDto(
-                user_name=user.name,
-                azure_id=user.azure_id,
-                user_id=user.id,
-                project_id=dto.id,
-                role=ProjectRoleType.FACILITATOR,
-            )
-            dto.users.append(owner_role)
+
+        if not is_duplicate:
+            for dto in dtos:
+                owner_role = ProjectRoleCreateDto(
+                    user_name=user.name,
+                    azure_id=user.azure_id,
+                    user_id=user.id,
+                    project_id=dto.id,
+                    role=ProjectRoleType.FACILITATOR,
+                )
+                dto.users.append(owner_role)
 
         project_entities: list[Project] = await ProjectRepository(session).create(
             ProjectMapper.from_create_to_project_entities(dtos, user.id)

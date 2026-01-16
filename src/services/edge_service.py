@@ -25,12 +25,18 @@ class EdgeService:
         self, session: AsyncSession, dtos: list[EdgeIncomingDto]
     ) -> list[EdgeOutgoingDto]:
         entities: list[Edge] = await EdgeRepository(session).create(EdgeMapper.to_entities(dtos))
+        # Get all unique node IDs (handles duplicates)
+        all_node_ids = list({dto.tail_id for dto in dtos} | {dto.head_id for dto in dtos})
+        nodes = await NodeRepository(session).get(all_node_ids)
+        node_lookup: dict[uuid.UUID, Node] = {node.id: node for node in nodes}
 
-        tail_nodes = await NodeRepository(session).get([x.tail_id for x in dtos])
-        head_nodes = await NodeRepository(session).get([x.head_id for x in dtos])
-        for edge, tail_node, head_node in zip(entities, tail_nodes, head_nodes):
-            self._connect_nodes_to_edge(edge, tail_node, head_node)
-        # get the dtos while the entities are still connected to the session
+        # Connect nodes using lookup (works with duplicate tail/head IDs)
+        for edge in entities:
+            tail_node = node_lookup.get(edge.tail_id)
+            head_node = node_lookup.get(edge.head_id)
+            if tail_node and head_node:
+                self._connect_nodes_to_edge(edge, tail_node, head_node)
+
         result: list[EdgeOutgoingDto] = EdgeMapper.to_outgoing_dtos(entities)
         return result
 

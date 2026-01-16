@@ -139,6 +139,7 @@ class ProjectDuplicationService:
             session,
             [duplicate_project_dto],
             UserIncomingDto(id=None, name=current_user.name, azure_id=current_user.azure_id),
+            is_duplicate=True,
         )
 
         return duplicated_project[0]
@@ -395,6 +396,7 @@ class ProjectDuplicationService:
         mappings: IdMappings,
     ) -> None:
         """Duplicate all edges from the original project."""
+
         duplicate_edge_dtos: list[EdgeIncomingDto] = [
             EdgeIncomingDto(
                 id=uuid.uuid4(),
@@ -403,7 +405,6 @@ class ProjectDuplicationService:
                 project_id=new_project_id,
             )
             for edge in original_project.edges
-            if edge.tail_id in mappings.node and edge.head_id in mappings.node
         ]
 
         if duplicate_edge_dtos:
