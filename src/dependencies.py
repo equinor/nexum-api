@@ -7,7 +7,6 @@ from src.services.project_role_service import ProjectRoleService
 from src.services.decision_service import DecisionService
 from src.services.project_service import ProjectService
 from src.services.objective_service import ObjectiveService
-from src.services.opportunity_service import OpportunityService
 from src.services.uncertainty_service import UncertaintyService
 from src.services.discrete_probability_service import DiscreteProbabilityService
 from src.services.discrete_utility_service import DiscreteUtilityService
@@ -73,10 +72,6 @@ async def get_option_service() -> OptionService:
 
 async def get_objective_service() -> ObjectiveService:
     return ObjectiveService()
-
-
-async def get_opportunity_service() -> OpportunityService:
-    return OpportunityService()
 
 
 async def get_uncertainty_service() -> UncertaintyService:
