@@ -62,11 +62,13 @@ async def test_update_outcome(client: AsyncClient):
     parse_response_to_dtos_test(response, OutcomeOutgoingDto)
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_outcome(client: AsyncClient):
     response = await client.delete(f"/outcomes/{GenerateUuid.as_string(2)}")
     assert response.status_code == 200, f"Response content: {response.content}"
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_outcomes(client: AsyncClient):
     ids = [GenerateUuid.as_string(3), GenerateUuid.as_string(4)]

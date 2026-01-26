@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from src.models.node import Node
     from src.models.objective import Objective
     from src.models.edge import Edge
+    from src.models.strategy import Strategy
 
 from sqlalchemy import DateTime
 from datetime import timedelta
@@ -55,6 +56,12 @@ class Project(Base, BaseEntity, BaseAuditableEntity):
         cascade="all, delete-orphan",
     )
 
+    strategies: Mapped[list["Strategy"]] = relationship(
+        "Strategy",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+
     issues: Mapped[list["Issue"]] = relationship(
         "Issue",
         back_populates="project",
@@ -80,6 +87,7 @@ class Project(Base, BaseEntity, BaseAuditableEntity):
         name: str,
         project_role: list["ProjectRole"],
         objectives: list["Objective"],
+        strategies: list["Strategy"],
         user_id: int,
         public: bool = False,
         end_date: datetime = default_endtime(),
@@ -91,6 +99,7 @@ class Project(Base, BaseEntity, BaseAuditableEntity):
         self.name = name
         self.opportunityStatement = opportunityStatement
         self.objectives = objectives
+        self.strategies = strategies
         self.updated_by_id = user_id
         self.public = public
         self.end_date = end_date

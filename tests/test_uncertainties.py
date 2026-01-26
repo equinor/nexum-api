@@ -111,6 +111,7 @@ async def test_update_probability(client: AsyncClient):
     )
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_uncertainty(client: AsyncClient):
     response = await client.delete(f"/uncertainties/{GenerateUuid.as_string(2)}")

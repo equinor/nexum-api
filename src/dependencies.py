@@ -18,6 +18,7 @@ from src.services.node_style_service import NodeStyleService
 from src.services.issue_service import IssueService
 from src.services.outcome_service import OutcomeService
 from src.services.option_service import OptionService
+from src.services.strategy_service import StrategyService
 from src.services.user_service import UserService
 from src.services.solver_service import SolverService
 from src.services.structure_service import StructureService
@@ -108,6 +109,10 @@ async def get_node_style_service() -> NodeStyleService:
 
 async def get_issue_service() -> IssueService:
     return IssueService()
+
+
+async def get_strategy_service() -> StrategyService:
+    return StrategyService()
 
 
 async def get_user_service() -> UserService:

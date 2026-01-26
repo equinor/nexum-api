@@ -8,6 +8,11 @@ from src.dtos.project_roles_dtos import (
     ProjectRoleIncomingDto,
     ProjectRoleMapper,
 )
+from src.dtos.strategy_dtos import (
+    StrategyIncomingDto,
+    StrategyOutgoingDto,
+    StrategyMapper,
+)
 from src.models.project import Project, default_endtime
 
 from src.constants import DatabaseConstants
@@ -37,16 +42,19 @@ class ProjectCreateDto(ProjectDto):
 
 class ProjectIncomingDto(ProjectDto):
     objectives: list[ObjectiveViaProjectDto] = []
+    strategies: list[StrategyIncomingDto] = []
     users: list[ProjectRoleIncomingDto]
 
 
 class ProjectOutgoingDto(ProjectDto):
     objectives: list[ObjectiveOutgoingDto] = []
+    strategies: list[StrategyOutgoingDto] = []
     users: list[ProjectRoleOutgoingDto]
 
 
 class PopulatedProjectDto(ProjectDto):
     objectives: list[ObjectiveOutgoingDto] = []
+    strategies: list[StrategyOutgoingDto] = []
     users: list[ProjectRoleOutgoingDto]
 
 
@@ -64,6 +72,7 @@ class ProjectMapper:
             end_date=dto.end_date,
             objectives=ObjectiveMapper.via_project_to_entities(dto.objectives, user_id, dto.id),
             project_role=[],
+            strategies=[],
         )
 
     @staticmethod
@@ -78,6 +87,7 @@ class ProjectMapper:
             public=entity.public,
             end_date=entity.end_date,
             users=ProjectRoleMapper.to_outgoing_dtos(entity.project_role),
+            strategies=StrategyMapper.to_outgoing_dtos(entity.strategies),
         )
 
     @staticmethod
@@ -107,6 +117,7 @@ class ProjectMapper:
             public=dto.public,
             end_date=dto.end_date,
             project_role=ProjectRoleMapper.to_project_role_entities(dto.users),
+            strategies=StrategyMapper.to_entities(dto.strategies, user_id),
         )
 
     @staticmethod

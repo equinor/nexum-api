@@ -21,6 +21,7 @@ async def test_get_all_project_role(client: AsyncClient):
     parse_response_to_dtos_test(response, ProjectRoleOutgoingDto)
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_project_role(client: AsyncClient):
     response = await client.delete(

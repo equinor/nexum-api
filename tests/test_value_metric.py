@@ -42,6 +42,7 @@ async def test_update_value_metric(client: AsyncClient):
     assert response_content[0].name == new_name
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_value_metric(client: AsyncClient):
     response = await client.delete(f"/value-metrics/{GenerateUuid.as_string(2)}")

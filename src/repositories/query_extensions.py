@@ -12,6 +12,8 @@ from src.models import (
     User,
     DiscreteProbability,
     DiscreteUtility,
+    StrategyOption,
+    Strategy,
 )
 
 
@@ -128,8 +130,17 @@ class QueryExtensions:
             selectinload(Project.edges),
             selectinload(Project.issues).options(*QueryExtensions.load_issue_with_relationships()),
             selectinload(Project.project_role).options(*QueryExtensions.load_role_with_user()),
+            selectinload(Project.strategies).options(*QueryExtensions.load_strategy()),
         ]
-
+    
+    @staticmethod
+    def load_strategy() -> list[_AbstractLoad]:
+        return [
+            selectinload(Strategy.strategy_options).options(
+                joinedload(StrategyOption.option)
+            )
+        ]
+    
     @staticmethod
     def empty_load() -> list[_AbstractLoad]:
         """

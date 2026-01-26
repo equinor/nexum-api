@@ -83,7 +83,7 @@ async def test_create_issue(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_update_issue(client: AsyncClient):
-    issue_id = GenerateUuid.as_string(3)
+    issue_id = GenerateUuid.as_string(15)
     example_issue = parse_response_to_dto_test(
         await client.get(f"/issues/{issue_id}"), IssueOutgoingDto
     )
@@ -142,6 +142,7 @@ async def test_update_issue(client: AsyncClient):
     assert r.type == new_type
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_issue(client: AsyncClient):
     issue_id = GenerateUuid.as_string(3)
@@ -149,7 +150,7 @@ async def test_delete_issue(client: AsyncClient):
 
     assert response.status_code == 200, f"Response content: {response.content}"
 
-
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_issues(client: AsyncClient):
     ids = [GenerateUuid.as_string(14), GenerateUuid.as_string(15)]

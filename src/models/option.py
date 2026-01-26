@@ -14,6 +14,7 @@ from src.constants import DatabaseConstants
 if TYPE_CHECKING:
     from src.models.discrete_probability import DiscreteProbabilityParentOption
     from src.models.discrete_utility import DiscreteUtilityParentOption
+    from src.models.stragegy_option import StrategyOption
 
 
 class Option(Base, BaseEntity):
@@ -36,6 +37,12 @@ class Option(Base, BaseEntity):
     discrete_utility_parent_options: Mapped[list["DiscreteUtilityParentOption"]] = relationship(
         "DiscreteUtilityParentOption",
         back_populates="parent_option",
+        cascade="all, delete-orphan",
+    )
+
+    strategy_options: Mapped[list["StrategyOption"]] = relationship(
+        "StrategyOption",
+        back_populates="option",
         cascade="all, delete-orphan",
     )
 

@@ -61,6 +61,7 @@ async def test_update_decision(client: AsyncClient):
         assert set(actual_names) == set(new_alts), f"Expected {new_alts}, got {actual_names}"
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_decision(client: AsyncClient):
     decision_id = GenerateUuid.as_string("delete_test_decision")

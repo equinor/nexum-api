@@ -25,9 +25,11 @@ from src.models import (
     Decision,
     Node,
     NodeStyle,
+    StrategyOption,
     Outcome,
     Option,
     DiscreteProbability,
+    ProjectRole,
 )
 
 LoadOptions = List[_AbstractLoad]
@@ -294,6 +296,49 @@ class BaseRepository(Generic[T, IDType]):
                 incoming_entity.node_style, existing_entity.node_style
             )
         return existing_entity
+
+    
+    async def _update_project_roles(
+        self, incoming_entities: list[ProjectRole], existing_entities: list[ProjectRole]
+    ):
+        """
+        Updates existing_entities to match incoming_entities by:
+        - Updating project roles that exist in both lists (matched by id)
+        - Creating new project roles from incoming that don't exist in existing
+        - Deleting project roles from existing that aren't in incoming
+        """
+        
+        incoming_by_id = {role.id: role for role in incoming_entities}
+        existing_by_id = {role.id: role for role in existing_entities}
+
+        # Update existing project roles that are in incoming
+        common_ids = set(existing_by_id.keys()) & set(incoming_by_id.keys())
+        for role_id in common_ids:
+            existing_role = existing_by_id[role_id]
+            incoming_role = incoming_by_id[role_id]
+            existing_role.role = incoming_role.role
+            existing_role.user_id = incoming_role.user_id
+
+        # Delete project roles that are in existing but not in incoming
+        roles_to_delete = [
+            role for role in existing_entities if role.id not in incoming_by_id
+        ]
+        if roles_to_delete:
+            for role in roles_to_delete:
+                existing_entities.remove(role)
+                await self.session.delete(role)
+
+        # Create new project roles that are in incoming but not in existing
+        new_roles = [
+            role for role in incoming_entities if role.id not in existing_by_id
+        ]
+        if new_roles:
+            existing_entities.extend(new_roles)
+            for role in new_roles:
+                self.session.add(role)
+
+        return existing_entities
+
 
     @staticmethod
     def _update_node_style(incoming_entity: NodeStyle, existing_entity: NodeStyle):

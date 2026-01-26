@@ -59,12 +59,14 @@ async def test_update_objective(client: AsyncClient):
     assert response_content[0].name == new_name and response_content[0].project_id == new_project_id
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_objective(client: AsyncClient):
     response = await client.delete(f"/objectives/{GenerateUuid.as_string(2)}")
     assert response.status_code == 200, f"Response content: {response.content}"
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_objectives(client: AsyncClient):
     ids = [GenerateUuid.as_string(3), GenerateUuid.as_string(4)]

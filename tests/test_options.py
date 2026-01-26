@@ -65,11 +65,13 @@ async def test_update_option(client: AsyncClient):
     assert response_content[0].name == new_name
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_option(client: AsyncClient):
     response = await client.delete(f"/options/{GenerateUuid.as_string(2)}")
     assert response.status_code == 200, f"Response content: {response.content}"
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_options(client: AsyncClient):
     ids = [GenerateUuid.as_string(4), GenerateUuid.as_string(5)]
