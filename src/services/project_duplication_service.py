@@ -202,6 +202,48 @@ class ProjectDuplicationService:
         ]
         return mapped_outcome_ids, mapped_option_ids
 
+    def create_optional_issues_types(
+        self,
+        issue: Issue,
+        mappings: IdMappings,
+        new_uncertainty_id: Optional[uuid.UUID],
+        new_utility_id: Optional[uuid.UUID],
+        new_decision_id: Optional[uuid.UUID],
+    ) -> tuple[
+        Optional[UncertaintyIncomingDto],
+        Optional[UtilityIncomingDto],
+        Optional[DecisionIncomingDto],
+    ]:
+        """Create optional uncertainty and utility DTOs if they exist on the issue."""
+        uncertainty_dto = None
+        utility_dto = None
+        decision_dto = None
+
+        if issue.uncertainty and new_uncertainty_id is not None:
+            uncertainty_dto = UncertaintyIncomingDto(
+                id=new_uncertainty_id,
+                issue_id=mappings.issue[issue.id],
+                is_key=issue.uncertainty.is_key,
+                discrete_probabilities=[],
+                outcomes=[],
+            )
+
+        if issue.utility and new_utility_id is not None:
+            utility_dto = UtilityIncomingDto(
+                id=new_utility_id,
+                issue_id=mappings.issue[issue.id],
+                discrete_utilities=[],
+            )
+        if issue.decision and new_decision_id is not None:
+            decision_dto = DecisionIncomingDto(
+                id=new_decision_id,
+                issue_id=mappings.issue[issue.id],
+                type=DecisionHierarchy(issue.decision.type),
+                options=[],
+            )
+
+        return uncertainty_dto, utility_dto, decision_dto
+
     async def create_issue(
         self, session: AsyncSession, issue_dto: IssueIncomingDto, current_user: UserIncomingDto
     ) -> None:
@@ -226,6 +268,10 @@ class ProjectDuplicationService:
                 continue
 
             new_decision_id = uuid.uuid4()
+            new_uncertainty_id = uuid.uuid4()
+            new_utility_id = uuid.uuid4()
+            uncertainity_dto = None
+            utility_dto = None
             decision_dto = DecisionIncomingDto(
                 id=new_decision_id,
                 issue_id=mappings.issue[issue.id],
@@ -240,9 +286,49 @@ class ProjectDuplicationService:
                     for option in issue.decision.options
                 ],
             )
+            uncertainity_dto, utility_dto, _ = self.create_optional_issues_types(
+                issue, mappings, new_uncertainty_id, new_utility_id, None
+            )
 
             issue_dto = self.create_issue_dto(
-                issue, new_project_id, mappings, decision=decision_dto
+                issue,
+                new_project_id,
+                mappings,
+                decision=decision_dto,
+                uncertainty=uncertainity_dto,
+                utility=utility_dto,
+            )
+            await self.create_issue(session, issue_dto, current_user)
+
+    async def _duplicate_fact_unassigned_issue_type(
+        self,
+        session: AsyncSession,
+        original_project: Project,
+        new_project_id: uuid.UUID,
+        mappings: IdMappings,
+        current_user: UserIncomingDto,
+        issue_type: Type,
+    ) -> None:
+        """Duplicate issues of a basic type (UNASSIGNED or FACT) from the original project."""
+        for issue in original_project.issues:
+            if not (issue and issue.type == issue_type.value):
+                continue
+
+            new_uncertainty_id = uuid.uuid4()
+            new_utility_id = uuid.uuid4()
+            new_decision_id = uuid.uuid4()
+
+            uncertainity_dto, utility_dto, decision_dto = self.create_optional_issues_types(
+                issue, mappings, new_uncertainty_id, new_utility_id, new_decision_id
+            )
+
+            issue_dto = self.create_issue_dto(
+                issue,
+                new_project_id,
+                mappings,
+                decision=decision_dto,
+                uncertainty=uncertainity_dto,
+                utility=utility_dto,
             )
             await self.create_issue(session, issue_dto, current_user)
 
@@ -254,16 +340,10 @@ class ProjectDuplicationService:
         mappings: IdMappings,
         current_user: UserIncomingDto,
     ) -> None:
-        """Duplicate all decision issues from the original project."""
-        for issue in original_project.issues:
-            if not (issue and issue.type == Type.UNASSIGNED.value):
-                continue
-            issue_dto = self.create_issue_dto(
-                issue,
-                new_project_id,
-                mappings,
-            )
-            await self.create_issue(session, issue_dto, current_user)
+        """Duplicate all unassigned issues from the original project."""
+        await self._duplicate_fact_unassigned_issue_type(
+            session, original_project, new_project_id, mappings, current_user, Type.UNASSIGNED
+        )
 
     async def duplicate_fact_issues(
         self,
@@ -273,17 +353,10 @@ class ProjectDuplicationService:
         mappings: IdMappings,
         current_user: UserIncomingDto,
     ) -> None:
-        """Duplicate all decision issues from the original project."""
-        for issue in original_project.issues:
-            if not (issue and issue.type == Type.FACT.value):
-                continue
-
-            issue_dto = self.create_issue_dto(
-                issue,
-                new_project_id,
-                mappings,
-            )
-            await self.create_issue(session, issue_dto, current_user)
+        """Duplicate all fact issues from the original project."""
+        await self._duplicate_fact_unassigned_issue_type(
+            session, original_project, new_project_id, mappings, current_user, Type.FACT
+        )
 
     async def duplicate_uncertainty_issues(
         self,
@@ -301,7 +374,8 @@ class ProjectDuplicationService:
                 continue
 
             new_uncertainty_id = uuid.uuid4()
-
+            new_decision_id = uuid.uuid4()
+            new_utility_id = uuid.uuid4()
             # Create outcomes
             outcomes_dtos: list[OutcomeIncomingDto] = [
                 OutcomeIncomingDto(
@@ -340,9 +414,17 @@ class ProjectDuplicationService:
                 outcomes=outcomes_dtos,
                 discrete_probabilities=[],
             )
+            _, utility_dto, decision_dto = self.create_optional_issues_types(
+                issue, mappings, new_uncertainty_id, new_utility_id, new_decision_id
+            )
 
             issue_dto = self.create_issue_dto(
-                issue, new_project_id, mappings, uncertainty=uncertainty_dto
+                issue,
+                new_project_id,
+                mappings,
+                uncertainty=uncertainty_dto,
+                decision=decision_dto,
+                utility=utility_dto,
             )
             await self.create_issue(session, issue_dto, current_user)
 
@@ -362,6 +444,8 @@ class ProjectDuplicationService:
                 continue
 
             new_utility_id = uuid.uuid4()
+            new_decision_id = uuid.uuid4()
+            new_uncertainty_id = uuid.uuid4()
 
             discrete_utility_dtos: list[DiscreteUtilityIncomingDto] = []
             for du in issue.utility.discrete_utilities:
@@ -384,8 +468,18 @@ class ProjectDuplicationService:
                 issue_id=mappings.issue[issue.id],
                 discrete_utilities=discrete_utility_dtos,
             )
+            uncertainity_dto, _, decision_dto = self.create_optional_issues_types(
+                issue, mappings, new_uncertainty_id, new_utility_id, new_decision_id
+            )
 
-            issue_dto = self.create_issue_dto(issue, new_project_id, mappings, utility=utility_dto)
+            issue_dto = self.create_issue_dto(
+                issue,
+                new_project_id,
+                mappings,
+                utility=utility_dto,
+                decision=decision_dto,
+                uncertainty=uncertainity_dto,
+            )
             await self.create_issue(session, issue_dto, current_user)
 
     async def duplicate_edges(

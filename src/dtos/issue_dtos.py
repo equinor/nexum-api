@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Annotated
@@ -56,6 +57,8 @@ class IssueOutgoingDto(IssueDto):
     decision: Optional[DecisionOutgoingDto]
     uncertainty: Optional[UncertaintyOutgoingDto]
     utility: Optional[UtilityOutgoingDto]
+    created_at: datetime
+    updated_at: datetime
 
 
 class IssueViaNodeOutgoingDto(IssueDto):
@@ -88,6 +91,8 @@ class IssueMapper:
                 else None
             ),
             utility=UtilityMapper.to_outgoing_dto(entity.utility) if entity.utility else None,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
         )
 
     @staticmethod
