@@ -13,6 +13,7 @@ from src.dtos.project_dtos import (
 )
 from src.dtos.strategy_dtos import StrategyIncomingDto
 from src.dtos.option_dtos import OptionIncomingDto
+from src.dtos.project_roles_dtos import ProjectRoleIncomingDto
 from src.seed_database import GenerateUuid
 
 
@@ -103,6 +104,10 @@ async def test_update_project_with_strategies(client: AsyncClient):
     test_strategy_id = GenerateUuid.as_uuid(1)
     test_option_id = GenerateUuid.as_uuid(1)
     project_id = GenerateUuid.as_uuid(0)
+
+    response = await client.get(f"/projects/{project_id}")
+
+    example_project = parse_response_to_dto_test(response, ProjectOutgoingDto)
     
     
     strategy = StrategyIncomingDto(
@@ -126,7 +131,17 @@ async def test_update_project_with_strategies(client: AsyncClient):
             id=project_id,
             name=new_name,
             opportunityStatement="Updated opportunity statement",
-            users=[],
+            users=[
+                ProjectRoleIncomingDto(
+                    id=user.id,
+                    user_id=user.user_id,
+                    user_name=user.user_name,
+                    project_id=user.project_id,
+                    azure_id=user.azure_id,
+                    role=user.role, # type: ignore
+                )
+                for user in example_project.users   
+            ],
             strategies=[strategy],
         ).model_dump(mode="json")
     ]
