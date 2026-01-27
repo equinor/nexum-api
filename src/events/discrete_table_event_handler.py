@@ -22,6 +22,7 @@ from src.repositories import (
     issue_repository,
     utility_repository,
     node_repository,
+    strategy_repository,
 )
 from src.utils.session_info_handler import (
     SessionInfoHandler,
@@ -149,6 +150,7 @@ class DiscreteTableEventHandler:
         """Process modified entities and find affected tables."""
         session_info = SessionInfo()
         issues_to_search: set[uuid.UUID] = set()
+        issues_pending_strategy_removal: set[uuid.UUID] = set()
         changed_edges: set[uuid.UUID] = set()
 
         head_ids: set[uuid.UUID] = set()
@@ -180,10 +182,14 @@ class DiscreteTableEventHandler:
             elif isinstance(modified_entity, Issue):
                 if self._has_boundary_change(modified_entity):
                     issues_to_search.add(modified_entity.id)
+                if self._has_boundary_changed_from_in(modified_entity):
+                    issues_pending_strategy_removal.add(modified_entity.id)
                 
                 if self._has_type_change_to_or_from_uncertainty_decision(modified_entity):
                     session_info.affected_uncertainties.add(modified_entity.id)
                     issues_to_search.add(modified_entity.id)
+                if self._has_type_change_from_decision(modified_entity):
+                    issues_pending_strategy_removal.add(modified_entity.id)
             
             elif isinstance(modified_entity, Uncertainty):
                 if self._has_key_change(modified_entity):
@@ -192,6 +198,8 @@ class DiscreteTableEventHandler:
             elif isinstance(modified_entity, Decision):
                 if self._has_focus_type_change(modified_entity):
                     issues_to_search.add(modified_entity.issue_id)
+                if self._has_focus_type_change_from_focus(modified_entity):
+                    issues_pending_strategy_removal.add(modified_entity.issue_id)
         
         # Find the head node issues that are affected by the edge updates
         if edge_tail_to_head_mapping or head_ids:
@@ -205,6 +213,9 @@ class DiscreteTableEventHandler:
             session_info = SessionInfoHandler.add_to_session_info(session_info,
                 issue_repository.find_effected_session_entities(session, issues_to_search)
             )
+
+        if issues_pending_strategy_removal:
+            session_info.issues_pending_strategy_removal = issues_pending_strategy_removal
         
         return session_info
     
@@ -250,6 +261,12 @@ class DiscreteTableEventHandler:
         return (Boundary.OUT.value in (history.added or []) or 
                 Boundary.OUT.value in (history.deleted or []))
     
+    def _has_boundary_changed_from_in(self, issue: Issue):
+        history = get_history(issue, Issue.boundary.name)
+        if not history.has_changes():
+            return False
+        return Boundary.IN.value in (history.deleted or [])
+    
     def _has_type_change_to_or_from_uncertainty_decision(self, issue: Issue) -> bool:
         """Check if issue type changed to/from UNCERTAINTY or DECISION."""
         history = get_history(issue, Issue.type.name)
@@ -261,6 +278,14 @@ class DiscreteTableEventHandler:
         deleted = set(history.deleted or [])
         
         return bool(relevant_types.intersection(added) or relevant_types.intersection(deleted))
+    
+    def _has_type_change_from_decision(self, issue: Issue) -> bool:
+        """Check if issue type changed to/from UNCERTAINTY or DECISION."""
+        history = get_history(issue, Issue.type.name)
+        if not history.has_changes():
+            return False
+        
+        return Type.DECISION.value in (history.deleted or [])
     
     def _has_key_change(self, uncertainty: Uncertainty) -> bool:
         """Check if uncertainty key status changed."""
@@ -274,7 +299,15 @@ class DiscreteTableEventHandler:
         return (DecisionHierarchy.FOCUS.value in (history.added or []) or 
                 DecisionHierarchy.FOCUS.value in (history.deleted or []))
     
-    def recalculate_affected_probabilities(self, session: Session) -> None:
+    def _has_focus_type_change_from_focus(self, decision: Decision) -> bool:
+        """Check if decision type changed to/from FOCUS."""
+        history = get_history(decision, Decision.type.name)
+        if not history.has_changes():
+            return False
+        return DecisionHierarchy.FOCUS.value in (history.deleted or [])
+    
+    @staticmethod
+    def recalculate_affected_probabilities(session: Session) -> None:
         """Recalculate discrete probability tables for all affected uncertainties."""
         session_info = SessionInfoHandler.get_session_info(session)
 
@@ -284,7 +317,8 @@ class DiscreteTableEventHandler:
         for uncertainty_id in session_info.affected_uncertainties:
             uncertainty_repository.recalculate_discrete_probability_table(session, uncertainty_id)
 
-    def recalculate_affected_utilities(self, session: Session) -> None:
+    @staticmethod
+    def recalculate_affected_utilities(session: Session) -> None:
         """Recalculate discrete utility tables for all affected utilities."""
         session_info = SessionInfoHandler.get_session_info(session)
 
@@ -293,3 +327,8 @@ class DiscreteTableEventHandler:
         
         for utility_id in session_info.affected_utilities:
             utility_repository.recalculate_discrete_utility_table(session, utility_id)
+
+    @staticmethod
+    def remove_options_from_strategy_table(session: Session):
+        session_info = SessionInfoHandler.get_session_info(session)
+        strategy_repository.remove_options_out_of_scope(session, session_info.issues_pending_strategy_removal)

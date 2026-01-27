@@ -39,6 +39,7 @@ async-lru = "^2.0.5"
 azure-monitor-opentelemetry = "^1.8.1"
 azure-monitor-opentelemetry-exporter = "^1.0.0b44"
 xarray = "^2025.10.1"
+pytest-ordering = "^0.6"
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"

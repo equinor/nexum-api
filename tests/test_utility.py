@@ -61,6 +61,7 @@ async def test_update_utility(client: AsyncClient):
     assert response_content[0].discrete_utilities[0].utility_value == new_value
     assert len(response_content[0].discrete_utilities) == len(utility.discrete_utilities)
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_utility(client: AsyncClient):
     response = await client.delete(f"/utilities/{GenerateUuid.as_string(2)}")

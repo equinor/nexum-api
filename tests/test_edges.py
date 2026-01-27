@@ -61,12 +61,14 @@ async def test_update_edge(client: AsyncClient):
     assert response_content[0].tail_id == new_tail_id and response_content[0].head_id == new_head_id
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_edge(client: AsyncClient):
     response = await client.delete(f"/edges/{GenerateUuid.as_string(2)}")
     assert response.status_code == 200, f"Response content: {response.content}"
 
 
+@pytest.mark.last
 @pytest.mark.asyncio
 async def test_delete_edges(client: AsyncClient):
     ids = [GenerateUuid.as_string(3), GenerateUuid.as_string(4)]

@@ -68,18 +68,16 @@ class ProjectService:
                 )
                 dto.users.append(owner_role)
 
-        project_entities: list[Project] = await ProjectRepository(session).create(
+        await ProjectRepository(session).create(
             ProjectMapper.from_create_to_project_entities(dtos, user.id)
         )
-        for project_entity, dto in zip(project_entities, dtos):
+        for dto in dtos:
             if len(dto.users) > 0:
-                project_role_entities: list[ProjectRole] = await self._create_role_for_project(
+                await self._create_role_for_project(
                     session, dto.users
                 )
-                project_entity.project_role = project_role_entities
 
-        result: list[ProjectOutgoingDto] = ProjectMapper.to_outgoing_dtos(project_entities)
-        return result
+        return await self.get(session, ids = [dto.id for dto in dtos])
 
     async def update(
         self,
@@ -88,12 +86,11 @@ class ProjectService:
         user_dto: UserIncomingDto,
     ) -> list[ProjectOutgoingDto]:
         user = await UserRepository(session).get_or_create(UserMapper.to_entity(user_dto))
-        entities_project: list[Project] = await ProjectRepository(session).update(
+        await ProjectRepository(session).update(
             ProjectMapper.to_project_entities(dtos, user.id)
         )
-        result: list[ProjectOutgoingDto] = ProjectMapper.to_outgoing_dtos(entities_project)
-        return result
-
+        return await self.get(session, ids = [dto.id for dto in dtos])
+    
     async def delete(
         self,
         session: AsyncSession,

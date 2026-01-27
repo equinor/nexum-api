@@ -33,7 +33,7 @@ async def create_projects(
     If Objectives/Opportunities are supplied with the Scenario, then they will be created after the Scenario with the appropriate Id.
     """
     try:
-        result = list(await project_service.create(session, dtos, current_user))
+        result = await project_service.create(session, dtos, current_user)
         await session.commit()
         return result
     except Exception as e:
@@ -129,7 +129,7 @@ async def update_projects(
     session: AsyncSession = Depends(get_db),
 ) -> list[ProjectOutgoingDto]:
     try:
-        result = list(await project_service.update(session, dtos, current_user))
+        result = await project_service.update(session, dtos, current_user)
         await session.commit()
         return result
     except Exception as e:
