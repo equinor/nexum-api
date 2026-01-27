@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class SessionInfo(BaseModel):
     affected_uncertainties: set[uuid.UUID] = Field(default_factory=set)  # type: ignore
     affected_utilities: set[uuid.UUID] = Field(default_factory=set)  # type: ignore
-    issues_from_which_to_remove_stratigy_options: set[uuid.UUID] = Field(default_factory=set)  # type: ignore
+    issues_pending_strategy_removal: set[uuid.UUID] = Field(default_factory=set)  # type: ignore
     is_event_disabled: bool = False
 
 
@@ -29,5 +29,8 @@ class SessionInfoHandler:
 
         if additional_session_data.affected_utilities:
             current.affected_utilities.update(additional_session_data.affected_utilities)
+
+        if additional_session_data.issues_pending_strategy_removal:
+            current.issues_pending_strategy_removal.update(additional_session_data.issues_pending_strategy_removal)
 
         return current
