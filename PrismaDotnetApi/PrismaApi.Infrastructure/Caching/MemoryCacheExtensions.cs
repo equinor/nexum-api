@@ -6,7 +6,7 @@ namespace PrismaApi.Infrastructure.Caching;
 public static class MemoryCacheExtensions
 {
     private static readonly HashSet<CacheItem> cachedKeys = new();
-    private static readonly SemaphoreSlim cacheLock = new(1, 1);
+    private static readonly SemaphoreSlim cacheLock = new(100, 100);
 
     private static readonly MemoryCacheEntryOptions CacheEntryOptions =
         new MemoryCacheEntryOptions().SetSlidingExpiration(
