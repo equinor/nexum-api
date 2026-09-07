@@ -103,6 +103,11 @@ public partial class AppDbContext : DbContext
             ..GetChangedEntries<Strategy>().Select(e => e.Entity.ProjectId),
             ..GetChangedEntries<StrategyOption>().Select(e => e.Entity.Strategy!.ProjectId)
         ];
+
+        foreach (var projectId in affectedProjectIds)
+        {
+            _cache.InvalidateCacheEntry(new CacheItem { CacheKey = CacheKeys.GetStrategyInProjectKey(projectId) });
+        }
     }
 
     private void InvalidateInfluenceDiagramData()
