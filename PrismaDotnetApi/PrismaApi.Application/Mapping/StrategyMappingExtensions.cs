@@ -46,6 +46,7 @@ public static class StrategyMappingExtensions
             IconColor = dto.IconColor,
             StrategyOptions = dto.Options.Select(option => new StrategyOption
             {
+                ProjectId = dto.ProjectId,
                 OptionId = option.Id,
                 StrategyId = dto.Id
             }).ToList()
