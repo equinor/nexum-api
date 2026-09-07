@@ -68,38 +68,19 @@ public class IssueService : IIssueService
 
     public async Task<List<IssueOutgoingDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
     {
-        // refactor to get all projects that the user has access to, then combine them all after getting them from the cache or database
-        var issues = new List<IssueOutgoingDto>();
-        var projectIdsToGetFromDb = new HashSet<Guid>();
-
-        var projectIds = _cache.GetAccessibleProjectIds(user);
-
-        foreach (var projectId in projectIds)
-        {
-            var cachedIssues = _cache.GetCacheItemAsIssues(projectId, user);
-            if (cachedIssues != null)
-            {
-                issues.AddRange(cachedIssues);
-            }
-            else
-            {
-                projectIdsToGetFromDb.Add(projectId);
-            }
-        }
-
-        if (projectIdsToGetFromDb.Count > 0)
-        {
-            var projectIssues = await _issueRepository.GetAllAsync(withTracking: false, filterPredicate: ProjectFilter(projectIdsToGetFromDb), ct: ct);
-            var issueDtos = projectIssues.ToOutgoingDtos();
-            issues.AddRange(issueDtos);
-            foreach (var projectId in projectIdsToGetFromDb)
-            {
-                var cacheKey = CacheKeys.GetIssuesInProjectKey(projectId);
-                var projectIssueDtos = issueDtos.Where(i => i.ProjectId == projectId).ToList();
-                _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultLongQueryCacheInTimeSpan, projectIssueDtos);
-            }
-        }
-        return issues;
+        return await _cache.GetProjectScopedAsync(
+            user,
+            loadMissingAsync: async (projectIds, ct) => (
+                await _issueRepository.GetAllAsync(
+                    withTracking: false,
+                    filterPredicate: ProjectFilter(projectIds),
+                    ct: ct
+                )
+            ).ToOutgoingDtos(),
+            getProjectId: dto => dto.ProjectId,
+            getCacheKey: CacheKeys.GetIssuesInProjectKey,
+            cacheDuration: CacheConstants.DefaultLongQueryCacheInTimeSpan,
+            ct: ct);
     }
 
     private static void EnsureNodeDefaults(IEnumerable<IssueIncomingDto> dtos)

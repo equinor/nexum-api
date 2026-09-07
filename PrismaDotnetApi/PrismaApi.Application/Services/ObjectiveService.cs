@@ -49,37 +49,20 @@ public class ObjectiveService : IObjectiveService
 
     public async Task<List<ObjectiveOutgoingDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
     {
-        var objectives = new List<ObjectiveOutgoingDto>();
-        var projectIdsToGetFromDb = new HashSet<Guid>();
 
-        var projectIds = _cache.GetAccessibleProjectIds(user);
-
-        foreach (var projectId in projectIds)
-        {
-            var cachedObjectives = _cache.GetCacheItemAsObjectives(projectId, user);
-            if (cachedObjectives != null)
-            {
-                objectives.AddRange(cachedObjectives);
-            }
-            else
-            {
-                projectIdsToGetFromDb.Add(projectId);
-            }
-        }
-        if (projectIdsToGetFromDb.Count > 0)
-        {
-            var entities = await _objectiveRepository.GetAllAsync(withTracking: false, filterPredicate: ProjectFilter(projectIdsToGetFromDb), ct: ct);
-            var dbObjectives = entities.ToOutgoingDtos();
-            objectives.AddRange(dbObjectives);
-            foreach (var projectId in projectIdsToGetFromDb)
-            {
-                var cacheKey = CacheKeys.GetObjectivesInProjectKey(projectId);
-                var projectObjectivesDtos = objectives.Where(x => x.ProjectId == projectId).ToList();
-                _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultQueryCacheInTimeSpan, projectObjectivesDtos);
-            }
-        }
-
-        return objectives;
+        return await _cache.GetProjectScopedAsync(
+            user,
+            loadMissingAsync: async (projectIds, ct) => (
+                await _objectiveRepository.GetAllAsync(
+                    withTracking: false,
+                    filterPredicate: ProjectFilter(projectIds),
+                    ct: ct
+                )
+            ).ToOutgoingDtos(),
+            getProjectId: dto => dto.ProjectId,
+            getCacheKey: CacheKeys.GetObjectivesInProjectKey,
+            cacheDuration: CacheConstants.DefaultMediumQueryCacheInTimeSpan,
+            ct: ct);
     }
     public async Task<List<ObjectiveOutgoingDto>> GetByProjectAsync(Guid projectId, UserOutgoingDto user, CancellationToken ct = default)
     {

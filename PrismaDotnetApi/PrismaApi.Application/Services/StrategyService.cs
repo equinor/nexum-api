@@ -60,37 +60,18 @@ public class StrategyService : IStrategyService
 
     public async Task<List<StrategyOutgoingDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
     {
-        var strategies = new List<StrategyOutgoingDto>();
-        var projectIdsToGetFromDb = new HashSet<Guid>();
-
-        var projectIds = _cache.GetAccessibleProjectIds(user);
-
-        foreach (var projectId in projectIds)
-        {
-            var cachedStrategies = _cache.GetCacheItemAsStrategies(projectId, user);
-            if (cachedStrategies != null)
-            {
-                strategies.AddRange(cachedStrategies);
-            }
-            else
-            {
-                projectIdsToGetFromDb.Add(projectId);
-            }
-        }
-        if (projectIdsToGetFromDb.Count > 0)
-        {
-            var entities = await _strategyRepository.GetAllAsync(filterPredicate: ProjectFilter(projectIdsToGetFromDb), ct: ct);
-            var dbStrategies = entities.ToOutgoingDtos();
-            strategies.AddRange(dbStrategies);
-            foreach (var projectId in projectIdsToGetFromDb)
-            {
-                var cacheKey = CacheKeys.GetStrategyInProjectKey(projectId);
-                var projectStrategyDtos = strategies.Where(x => x.ProjectId == projectId).ToList();
-                _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultQueryCacheInTimeSpan, projectStrategyDtos);
-            }
-        }
-
-        return strategies;
+        return await _cache.GetProjectScopedAsync(
+            user,
+            loadMissingAsync: async (projectIds, ct) => (
+                await _strategyRepository.GetAllAsync(
+                    filterPredicate: ProjectFilter(projectIds),
+                    ct: ct
+                )
+            ).ToOutgoingDtos(),
+            getProjectId: dto => dto.ProjectId,
+            getCacheKey: CacheKeys.GetStrategyInProjectKey,
+            cacheDuration: CacheConstants.DefaultMediumQueryCacheInTimeSpan,
+            ct: ct);
     }
 
     private static Expression<Func<Strategy, bool>> UserFilter(UserOutgoingDto user)

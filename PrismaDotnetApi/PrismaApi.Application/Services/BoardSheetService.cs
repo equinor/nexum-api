@@ -49,38 +49,19 @@ public class BoardSheetService : IBoardSheetService
 
     public async Task<List<BoardSheetOutgoingDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
     {
-        var boardSheets = new List<BoardSheetOutgoingDto>();
-        var projectIdsToGetFromDb = new HashSet<Guid>();
-
-        var projectIds = _cache.GetAccessibleProjectIds(user);
-
-        foreach (var projectId in projectIds)
-        {
-            var cachedBoardSheets = _cache.GetCacheItemAsBoardSheets(projectId, user);
-            if (cachedBoardSheets != null)
-            {
-                boardSheets.AddRange(cachedBoardSheets);
-            }
-            else
-            {
-                projectIdsToGetFromDb.Add(projectId);
-            }
-        }
-
-        if (projectIdsToGetFromDb.Count > 0)
-        {
-            var projectBoardSheets = await _boardSheetRepository.GetAllAsync(withTracking: false, filterPredicate: ProjectFilter(projectIdsToGetFromDb), ct: ct);
-            var boardSheetDtos = projectBoardSheets.ToOutgoingDtos();
-            boardSheets.AddRange(boardSheetDtos);
-            foreach (var projectId in projectIdsToGetFromDb)
-            {
-                var cacheKey = CacheKeys.GetBoardSheetsInProjectKey(projectId);
-                var projectBoardSheetDtos = boardSheetDtos.Where(s => s.ProjectId == projectId).ToList();
-                _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultQueryCacheInTimeSpan, projectBoardSheetDtos);
-            }
-        }
-
-        return boardSheets;
+        return await _cache.GetProjectScopedAsync(
+            user,
+            loadMissingAsync: async (projectIds, ct) => (
+                await _boardSheetRepository.GetAllAsync(
+                    withTracking: false,
+                    filterPredicate: ProjectFilter(projectIds),
+                    ct: ct
+                )
+            ).ToOutgoingDtos(),
+            getProjectId: dto => dto.ProjectId,
+            getCacheKey: CacheKeys.GetBoardSheetsInProjectKey,
+            cacheDuration: CacheConstants.DefaultMediumQueryCacheInTimeSpan,
+            ct: ct);
     }
 
     private static Expression<Func<BoardSheet, bool>> UserFilter(UserOutgoingDto user)
