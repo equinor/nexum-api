@@ -101,7 +101,7 @@ public partial class AppDbContext : DbContext
     {
         HashSet<Guid> affectedProjectIds = [
             ..GetChangedEntries<Strategy>().Select(e => e.Entity.ProjectId),
-            ..GetChangedEntries<StrategyOption>().Select(e => e.Entity.Strategy!.ProjectId)
+            ..GetChangedEntries<StrategyOption>().Select(e => e.Entity.ProjectId)
         ];
 
         foreach (var projectId in affectedProjectIds)
