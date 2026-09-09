@@ -122,4 +122,23 @@ public class BaseRepository<TEntity, TId> : ICrudRepository<TEntity, TId>
         }
         await DbContext.SaveChangesAsync(ct);
     }
+
+    public virtual async Task DeleteFromPredicateAsync(Expression<Func<TEntity, bool>> filterPredicate, CancellationToken ct = default)
+    {
+        var entities = await Set
+            .OptionalWhere(filterPredicate)
+            .ToListAsync(ct);
+
+        if (entities.Count == 0)
+        {
+            throw new NotFoundException($"No {typeof(TEntity).Name} entities found. Either the entities do not exist or the user does not have permission to delete them.");
+        }
+
+        Set.RemoveRange(entities);
+        foreach (var entity in entities)
+        {
+            DbContext.Entry(entity).State = EntityState.Deleted;
+        }
+        await DbContext.SaveChangesAsync(ct);
+    }
 }

@@ -8,6 +8,7 @@ using PrismaApi.Domain.Entities;
 using PrismaApi.Infrastructure.Interfaces;
 using PrismaApi.Infrastructure.Caching;
 using System.Linq.Expressions;
+using PrismaApi.Application.Exceptions;
 
 namespace PrismaApi.Application.Services;
 
@@ -15,13 +16,15 @@ public class IssueService : IIssueService
 {
     private readonly IIssueRepository _issueRepository;
     private readonly IProjectRepository _projectRepository;
+    private readonly IEdgeRepository _edgeRepository;
     private readonly IDiscreteTableRuleEventHandler _discreteTableRuleEventHandler;
     private readonly IMemoryCache _cache;
 
-    public IssueService(IIssueRepository issueRepository, IProjectRepository projectRepository, IDiscreteTableRuleEventHandler discreteTableRuleEventHandler, IMemoryCache cache)
+    public IssueService(IIssueRepository issueRepository, IProjectRepository projectRepository, IEdgeRepository edgeRepository, IDiscreteTableRuleEventHandler discreteTableRuleEventHandler, IMemoryCache cache)
     {
         _issueRepository = issueRepository;
         _projectRepository = projectRepository;
+        _edgeRepository = edgeRepository;
         _discreteTableRuleEventHandler = discreteTableRuleEventHandler;
         _cache = cache;
     }
@@ -57,6 +60,15 @@ public class IssueService : IIssueService
 
     public async Task DeleteAsync(List<Guid> ids, UserOutgoingDto user, CancellationToken ct = default)
     {
+        // Remove edges connected to these issues before deleting them
+        try
+        {
+            await _edgeRepository.DeleteFromPredicateAsync(e => ids.Contains(e.HeadNode!.IssueId), ct);
+        }
+        catch (NotFoundException)
+        {
+            // Ignore if no edges were found to delete
+        }
         await _issueRepository.DeleteByIdsAsync(ids, filterPredicate: UserFilter(user), ct: ct);
     }
 

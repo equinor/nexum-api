@@ -15,4 +15,5 @@ public interface ICrudRepository<TEntity, TId>
     Task<List<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities, CancellationToken ct = default);
     Task UpdateRangeAsync(IEnumerable<TEntity> entities, CancellationToken ct = default);
     Task DeleteByIdsAsync(IEnumerable<TId> ids, Expression<Func<TEntity, bool>>? filterPredicate = null, CancellationToken ct = default);
+    Task DeleteFromPredicateAsync(Expression<Func<TEntity, bool>> filterPredicate, CancellationToken ct = default);
 }
