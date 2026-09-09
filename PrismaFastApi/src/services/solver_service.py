@@ -91,13 +91,16 @@ class SolverService:
     ) -> list[Optional[float]]:
 
         solver = PyagrumSolver()
-        return await solver.get_mean_expected_utilities_given_evidence(
+        result = await solver.get_mean_expected_utilities_given_evidence(
             issues=issues,
             edges=edges,
             discrete_probabilities=discrete_probabilities,
             discrete_utilities=discrete_utilities,
             evidence=evidence,
         )
+        # for debugging
+        solver.export_as_jgum()
+        return result
 
     async def get_decision_tree_for_optimal_decisions_old(
         self,

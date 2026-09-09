@@ -1,6 +1,9 @@
+import json
+import threading
 import uuid
 import pyagrum as gum  # type: ignore
 from itertools import product
+from src.config import config
 from src.constants import Type
 from src.utils.discrete_probability_array_manager import DiscreteProbabilityArrayManager
 from src.dtos.issue_dtos import IssueOutgoingDto
@@ -546,3 +549,49 @@ class PyagrumSolver:
             )
             inst.inc()
         return parsed_rows
+
+    def export_as_jgum(self) -> dict:
+        file_name = "pyagrum_data/network.jgum"
+        file_name_json = "pyagrum_data/network.json"
+        gum.saveID(self.diagram, file_name)
+
+        issue_names = {str(issue.id): issue.name for issue in self.issues}
+        option_names = {
+            str(option.id): option.name
+            for issue in self.issues
+            if issue.decision is not None
+            for option in issue.decision.options
+        }
+        outcome_names = {
+            str(outcome.id): outcome.name
+            for issue in self.issues
+            if issue.uncertainty is not None
+            for outcome in issue.uncertainty.outcomes
+        }
+        id_to_name = issue_names | option_names | outcome_names
+
+        def replace_ids(value: object) -> object:
+            if isinstance(value, dict):
+                return {
+                    replace_ids(key): replace_ids(nested_value)
+                    for key, nested_value in value.items()
+                }
+            if isinstance(value, list):
+                return [replace_ids(item) for item in value]
+            if isinstance(value, str):
+                for entity_id, name in id_to_name.items():
+                    value = value.replace(entity_id, name)
+            return value
+
+        with open(file_name, encoding="utf-8") as jgum_file:
+            jgum = json.load(jgum_file)
+        
+        readable_model: dict = replace_ids(jgum)
+        if config.SAVE_INFLUENCE_DIAGRAM:
+            with open(file_name_json, "w", encoding="utf-8") as jgum_file:
+                json.dump(readable_model, jgum_file, ensure_ascii=False, separators=(",", ":"))
+
+        # return the json data as a dictionary
+        return readable_model
+
+    

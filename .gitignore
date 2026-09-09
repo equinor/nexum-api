@@ -190,3 +190,7 @@ PrismaApi/**/obj/
 **.db
 **.db-shm
 **.db-wal
+
+# generated pyagrum data
+PrismaFastApi/**/pyagrum_data/**.jgum
+PrismaFastApi/**/pyagrum_data/**.json
