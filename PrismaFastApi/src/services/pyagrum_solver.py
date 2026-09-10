@@ -1,7 +1,7 @@
 import json
-import threading
 import uuid
 import pyagrum as gum  # type: ignore
+from pathlib import Path
 from itertools import product
 from src.config import config
 from src.constants import Type
@@ -551,8 +551,10 @@ class PyagrumSolver:
         return parsed_rows
 
     def export_as_jgum(self) -> dict:
-        file_name = "pyagrum_data/network.jgum"
-        file_name_json = "pyagrum_data/network.json"
+        directory = "src/pyagrum_data"
+        file_name = f"{directory}/network.jgum"
+        file_name_json = f"{directory}/network.json"
+        Path(directory).mkdir(parents=True, exist_ok=True)
         gum.saveID(self.diagram, file_name)
 
         issue_names = {str(issue.id): issue.name for issue in self.issues}
