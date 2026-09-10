@@ -469,9 +469,10 @@ class DecisionTreeGraph_v3:
         matching_keys = [
             k for k in self.utility_lookup.keys() if set(k).issubset(branch_labels_list)
         ]
-        key = matching_keys[0]
-        value = sum(self.utility_lookup[key])
-        return value
+        return sum(
+            sum(self.utility_lookup[key])
+            for key in matching_keys
+        )
 
 
 class DecisionTreeCreator_v3:
