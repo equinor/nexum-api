@@ -74,12 +74,12 @@ public static class InfluenceDiagramDtoExtensions
         return utilityIssue;
     }
 
-    private static void CreateRestrictedDiscreteUtilities(this InfluenceDiagramDto influenceDiagramDto, Guid restrictionTableId, EdgeOutgoingDto edge)
+    private static void CreateRestrictedDiscreteUtilities(this InfluenceDiagramDto influenceDiagramDto, Guid restrictionTableId, EdgeOutgoingDto edge, string name)
     {
         var restrictionTable = influenceDiagramDto.restrictionTables.FirstOrDefault(rt => rt.Id == restrictionTableId);
         if (restrictionTable is null) return;
 
-        influenceDiagramDto.AddUtilityIssue(restrictionTableId, restrictionTable.Name, edge.TailNode, edge.HeadNode);
+        influenceDiagramDto.AddUtilityIssue(restrictionTableId, name, edge.TailNode, edge.HeadNode);
         foreach (var entry in restrictionTable.RestrictionEntries)
         {
             if (!entry.IsChildUncertainty && entry.ParentStateId is not null && entry.ChildStateId is not null)
@@ -95,7 +95,8 @@ public static class InfluenceDiagramDtoExtensions
                     UtilityId = restrictionTableId,
                     ParentOptionIds = parentOptionIds,
                     ParentOutcomeIds = parentOutcomeIds,
-                    UtilityValue = entry.RestrictionValue == 0 ? double.MinValue : 0
+                    // using -1e100 instead of double.MinValue because the solver cannot handle extremely large negative values
+                    UtilityValue = entry.RestrictionValue == 0 ? -1e100 : 0 
                 };
                 influenceDiagramDto.discreteUtilities.Add(discreteUtility);
             }
@@ -110,24 +111,27 @@ public static class InfluenceDiagramDtoExtensions
 
     private static void RestrictDecisions(InfluenceDiagramDto influenceDiagramDto)
     {
+        // Get all restriction tables that apply to decisions and have at least one restriction entry with a value other than 1
         var restrictionTablesDecisions = influenceDiagramDto.restrictionTables
             .Where(rt => !rt.RestrictionEntries.All(re => re.IsChildUncertainty) &&
                 rt.RestrictionEntries.Any(re => re.RestrictionValue != 1) // only apply restrictions if there are any entries with a restriction value other than 1
             )
             .ToList();
-
+        var i = 0;
         foreach (var table in restrictionTablesDecisions)
         {
             // skip if all entries have a restriction value of 1, meaning no restrictions
             if (table.RestrictionEntries.All(re => re.RestrictionValue == 1)) continue;
             var edge = influenceDiagramDto.edges.First(e => e.Id == table.EdgeId);
-            influenceDiagramDto.CreateRestrictedDiscreteUtilities(table.Id, edge);
+            influenceDiagramDto.CreateRestrictedDiscreteUtilities(table.Id, edge, $"Restricted utility {i}");
+            i++;
         }
     }
 
     private static void RestrictUncertainties(InfluenceDiagramDto influenceDiagramDto)
     {
         var discreteProbabilities = influenceDiagramDto.discreteProbabilities;
+        // Get all restriction entries that apply to uncertainties and have a restriction value other than 1
         var restrictionEntriesUncertainties = influenceDiagramDto.restrictionTables
             .SelectMany(rt => rt.RestrictionEntries)
             .Where(re => re.IsChildUncertainty && re.RestrictionValue != 1) // only apply restrictions if there are any entries with a restriction value other than 1
