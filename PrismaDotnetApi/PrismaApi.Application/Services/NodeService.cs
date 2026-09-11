@@ -42,37 +42,19 @@ public class NodeService : INodeService
 
     public async Task<List<NodeOutgoingDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
     {
-        var nodes = new List<NodeOutgoingDto>();
-        var projectIdsToGetFromDb = new HashSet<Guid>();
-
-        var projectIds = _cache.GetAccessibleProjectIds(user);
-
-        foreach (var projectId in projectIds)
-        {
-            var cachedNodes = _cache.GetCacheItemAsNodes(projectId, user);
-            if (cachedNodes != null)
-            {
-                nodes.AddRange(cachedNodes);
-            }
-            else
-            {
-                projectIdsToGetFromDb.Add(projectId);
-            }
-        }
-
-        if (projectIdsToGetFromDb.Count > 0)
-        {
-            var projectNodes = await _nodeRepository.GetAllAsync(withTracking: false, filterPredicate: ProjectFilter(projectIdsToGetFromDb), ct: ct);
-            var nodeDtos = projectNodes.ToOutgoingDtos();
-            nodes.AddRange(nodeDtos);
-            foreach (var projectId in projectIdsToGetFromDb)
-            {
-                var cacheKey = CacheKeys.GetNodesInProjectKey(projectId);
-                var projectNodeDtos = nodeDtos.Where(n => n.ProjectId == projectId).ToList();
-                _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultQueryCacheInTimeSpan, projectNodeDtos);
-            }
-        }
-        return nodes;
+        return await _cache.GetProjectScopedAsync(
+            user,
+            loadMissingAsync: async (projectIds, ct) => (
+                await _nodeRepository.GetAllAsync(
+                    withTracking: false,
+                    filterPredicate: ProjectFilter(projectIds),
+                    ct: ct
+                )
+            ).ToOutgoingDtos(),
+            getProjectId: dto => dto.ProjectId,
+            getCacheKey: CacheKeys.GetNodesInProjectKey,
+            cacheDuration: CacheConstants.DefaultMediumQueryCacheInTimeSpan,
+            ct: ct);
     }
 
     private static Expression<Func<Node, bool>> UserFilter(UserOutgoingDto user)

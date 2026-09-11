@@ -85,6 +85,31 @@ public partial class AppDbContext : DbContext
         }
     }
 
+    private void InvalidateObjectivesCache()
+    {
+        HashSet<Guid> affectedProjectIds = [
+            ..GetChangedEntries<Objective>().Select(e => e.Entity.ProjectId)
+        ];
+
+        foreach (var projectId in affectedProjectIds)
+        {
+            _cache.InvalidateCacheEntry(new CacheItem { CacheKey = CacheKeys.GetObjectivesInProjectKey(projectId) });
+        }
+    }
+
+    private void InvalidateStrategiesCache()
+    {
+        HashSet<Guid> affectedProjectIds = [
+            ..GetChangedEntries<Strategy>().Select(e => e.Entity.ProjectId),
+            ..GetChangedEntries<StrategyOption>().Select(e => e.Entity.ProjectId)
+        ];
+
+        foreach (var projectId in affectedProjectIds)
+        {
+            _cache.InvalidateCacheEntry(new CacheItem { CacheKey = CacheKeys.GetStrategyInProjectKey(projectId) });
+        }
+    }
+
     private void InvalidateInfluenceDiagramData()
     {
         HashSet<Guid> affectedProjectIds =
@@ -146,6 +171,8 @@ public partial class AppDbContext : DbContext
         InvalidateBoardSheetsCache();
         InvalidateInfluenceDiagramData();
         InvalidateProjectCache();
+        InvalidateObjectivesCache();
+        InvalidateStrategiesCache();
         await InvalidateProjectUsersAsync();
     }
 }

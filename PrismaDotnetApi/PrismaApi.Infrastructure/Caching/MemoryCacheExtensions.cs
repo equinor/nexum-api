@@ -6,7 +6,7 @@ namespace PrismaApi.Infrastructure.Caching;
 public static class MemoryCacheExtensions
 {
     private static readonly HashSet<CacheItem> cachedKeys = new();
-    private static readonly SemaphoreSlim cacheLock = new(1, 1);
+    private static readonly SemaphoreSlim cacheLock = new(100, 100);
 
     private static readonly MemoryCacheEntryOptions CacheEntryOptions =
         new MemoryCacheEntryOptions().SetSlidingExpiration(
@@ -135,6 +135,27 @@ public static class MemoryCacheExtensions
         }
         return cache.GetCacheItem<List<RestrictionTableOutgoingDto>>(CacheKeys.GetRestrictionTablesInProjectKey(projectId));
     }
+
+    public static List<ObjectiveOutgoingDto>? GetCacheItemAsObjectives(this IMemoryCache cache, Guid projectId, UserOutgoingDto user)
+    {
+        // check that the user has access to the project before returning cached objectives
+        if (!cache.HasAccessToProject(user, projectId))
+        {
+            return null;
+        }
+        return cache.GetCacheItem<List<ObjectiveOutgoingDto>>(CacheKeys.GetObjectivesInProjectKey(projectId));
+    }
+
+    public static List<StrategyOutgoingDto>? GetCacheItemAsStrategies(this IMemoryCache cache, Guid projectId, UserOutgoingDto user)
+    {
+        // check that the user has access to the project before returning cached strategies
+        if (!cache.HasAccessToProject(user, projectId))
+        {
+            return null;
+        }
+        return cache.GetCacheItem<List<StrategyOutgoingDto>>(CacheKeys.GetStrategyInProjectKey(projectId));
+    }
+
     public static List<ProjectOutgoingDto>? GetCacheItemAsProjects(this IMemoryCache cache, Guid projectId, UserOutgoingDto user)
     {
         // check that the user has access to the project before returning cached projects
@@ -282,5 +303,60 @@ public static class MemoryCacheExtensions
 
         var publicIds = cache.GetCacheItem<HashSet<Guid>>(CacheKeys.PublicProjectIdsKey);
         return publicIds?.Contains(projectId) == true;
+    }
+
+    ///<summary>
+    /// Retrieves project-scoped cached items, loading missing items as needed.
+    /// <param name="user">The user for whom to retrieve cached items.</param>
+    /// <param name="loadMissingAsync">Function to load missing items from the database.</param>
+    /// <param name="getProjectId">Function to get the project ID from a DTO.</param>
+    /// <param name="getCacheKey">Function to get the cache key for a project ID.</param>
+    /// <param name="cacheDuration">Duration to cache the items.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// </summary>
+    public static async Task<List<TDto>> GetProjectScopedAsync<TDto>(
+    this IMemoryCache cache,
+    UserOutgoingDto user,
+    Func<HashSet<Guid>, CancellationToken, Task<List<TDto>>> loadMissingAsync,
+    Func<TDto, Guid> getProjectId,
+    Func<Guid, string> getCacheKey,
+    TimeSpan cacheDuration,
+    CancellationToken ct = default)
+    where TDto : class
+    {
+        var results = new List<TDto>();
+        var projectIdsToLoad = new HashSet<Guid>();
+
+        foreach (var projectId in cache.GetAccessibleProjectIds(user))
+        {
+            var cachedDtos = cache.GetCacheItem<List<TDto>>(getCacheKey(projectId));
+            if (cachedDtos is not null)
+            {
+                results.AddRange(cachedDtos);
+            }
+            else
+            {
+                projectIdsToLoad.Add(projectId);
+            }
+        }
+
+        if (projectIdsToLoad.Count == 0)
+        {
+            return results;
+        }
+
+        var loadedDtos = await loadMissingAsync(projectIdsToLoad, ct);
+        results.AddRange(loadedDtos);
+
+        foreach (var projectId in projectIdsToLoad)
+        {
+            var projectDtos = loadedDtos.Where(dto => getProjectId(dto) == projectId).ToList();
+            cache.AddCacheItem(
+                new CacheItem { CacheKey = getCacheKey(projectId) },
+                cacheDuration,
+                projectDtos);
+        }
+
+        return results;
     }
 }

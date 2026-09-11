@@ -100,36 +100,20 @@ public class ProjectService : IProjectService
 
     public async Task<List<ProjectOutgoingDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
     {
-        var projects = new List<ProjectOutgoingDto>();
+        var projects = await _cache.GetProjectScopedAsync(
+            user,
+            loadMissingAsync: async (projectIds, ct) => (
+                await _projectRepository.GetAllAsync(
+                    withTracking: false,
+                    filterPredicate: project => projectIds.Contains(project.Id),
+                    ct: ct
+                )
+            ).ToOutgoingDtos(user.Id),
+            getProjectId: dto => dto.Id,
+            getCacheKey: CacheKeys.GetProjectKey,
+            cacheDuration: CacheConstants.DefaultLongQueryCacheInTimeSpan,
+            ct: ct);
 
-        var projectIdsToGetFromDb = new HashSet<Guid>();
-
-        var projectIds = _cache.GetAccessibleProjectIds(user);
-
-        foreach (var projectId in projectIds)
-        {
-            var cachedProjects = _cache.GetCacheItemAsProjects(projectId, user);
-            if (cachedProjects != null)
-            {
-                projects.AddRange(cachedProjects);
-            }
-            else
-            {
-                projectIdsToGetFromDb.Add(projectId);
-            }
-        }
-        if (projectIdsToGetFromDb.Count > 0)
-        {
-            var projectEntities = await _projectRepository.GetAllAsync(withTracking: false, filterPredicate: x => projectIdsToGetFromDb.Contains(x.Id), ct: ct);
-            var projectDtos = projectEntities.ToOutgoingDtos(user.Id);
-            projects.AddRange(projectDtos);
-            foreach (var projectId in projectIdsToGetFromDb)
-            {
-                var cacheKey = CacheKeys.GetProjectKey(projectId);
-                var projectDtosForCache = projectDtos.Where(rt => rt.Id == projectId).ToList();
-                _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultLongQueryCacheInTimeSpan, projectDtosForCache);
-            }
-        }
         RegisterPublicProjectsInCache(projects);
         return projects;
     }

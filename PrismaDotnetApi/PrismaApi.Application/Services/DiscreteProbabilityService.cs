@@ -53,37 +53,19 @@ public class DiscreteProbabilityService: IDiscreteProbabilityService
 
     public async Task<List<DiscreteProbabilityDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
     {
-        var discreteProbabilities = new List<DiscreteProbabilityDto>();
-        var projectIdsToGetFromDb = new HashSet<Guid>();
-
-        var projectIds = _cache.GetAccessibleProjectIds(user);
-
-        foreach (var projectId in projectIds)
-        {
-            var cachedDiscreteProbabilities = _cache.GetCacheItemAsDiscreteProbabilities(projectId, user);
-            if (cachedDiscreteProbabilities != null)
-            {
-                discreteProbabilities.AddRange(cachedDiscreteProbabilities);
-            }
-            else
-            {
-                projectIdsToGetFromDb.Add(projectId);
-            }
-        }
-
-        if (projectIdsToGetFromDb.Count > 0)
-        {
-            var projectDiscreteProbabilities = await _discreteProbabilityRepository.GetAllAsync(withTracking: false, filterPredicate: ProjectFilter(projectIdsToGetFromDb), ct: ct);
-            var discreteProbabilityDtos = projectDiscreteProbabilities.ToDtos();
-            discreteProbabilities.AddRange(discreteProbabilityDtos);
-            foreach (var projectId in projectIdsToGetFromDb)
-            {
-                var cacheKey = CacheKeys.GetDiscreteProbabilitiesInProjectKey(projectId);
-                var projectDiscreteProbabilityDtos = discreteProbabilityDtos.Where(dp => dp.ProjectId == projectId).ToList();
-                _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultQueryCacheInTimeSpan, projectDiscreteProbabilityDtos);
-            }
-        }
-        return discreteProbabilities;
+        return await _cache.GetProjectScopedAsync(
+            user,
+            loadMissingAsync: async (projectIds, ct) => (
+                await _discreteProbabilityRepository.GetAllAsync(
+                    withTracking: false,
+                    filterPredicate: ProjectFilter(projectIds),
+                    ct: ct
+                )
+            ).ToDtos(),
+            getProjectId: dto => dto.ProjectId,
+            getCacheKey: CacheKeys.GetDiscreteProbabilitiesInProjectKey,
+            cacheDuration: CacheConstants.DefaultMediumQueryCacheInTimeSpan,
+            ct: ct);
     }
 
     private static Expression<Func<DiscreteProbability, bool>> UserFilter(UserOutgoingDto user)

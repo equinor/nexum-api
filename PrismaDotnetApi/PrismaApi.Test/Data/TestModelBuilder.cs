@@ -269,9 +269,9 @@ public class TestModelBuilder
             });
 
         db.StrategyOptions.AddRange(
-            new StrategyOption { StrategyId = args.StrategyId, OptionId = args.OptionId },
-            new StrategyOption { StrategyId = args.StrategyDeleteId, OptionId = args.OptionDeleteId },
-            new StrategyOption { StrategyId = args.StrategyBulkDeleteId, OptionId = args.OptionBulkDeleteId });
+            new StrategyOption { StrategyId = args.StrategyId, OptionId = args.OptionId, ProjectId = primaryProject.Id },
+            new StrategyOption { StrategyId = args.StrategyDeleteId, OptionId = args.OptionDeleteId, ProjectId = primaryProject.Id },
+            new StrategyOption { StrategyId = args.StrategyBulkDeleteId, OptionId = args.OptionBulkDeleteId, ProjectId = primaryProject.Id });
 
         db.DiscreteUtilities.AddRange(
             new DiscreteUtility

@@ -64,37 +64,19 @@ namespace PrismaApi.Application.Services
 
         public async Task<List<AssessmentOutgoingDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
         {
-            var assessments = new List<AssessmentOutgoingDto>();
-            var projectIdsToGetFromDb = new HashSet<Guid>();
-
-            var projectIds = _cache.GetAccessibleProjectIds(user);
-
-            foreach (var projectId in projectIds)
-            {
-                var cachedAssessments = _cache.GetCacheItemAsAssessment(projectId, user);
-                if (cachedAssessments != null)
-                {
-                    assessments.AddRange(cachedAssessments);
-                }
-                else
-                {
-                    projectIdsToGetFromDb.Add(projectId);
-                }
-            }
-
-            if (projectIdsToGetFromDb.Count > 0)
-            {
-                var projectAssessments = await _assessmentRepository.GetAllAsync(withTracking: false, filterPredicate: ProjectFilter(projectIdsToGetFromDb), ct: ct);
-                var assessmentDtos = projectAssessments.ToOutgoingDtos();
-                assessments.AddRange(assessmentDtos);
-                foreach (var projectId in projectIdsToGetFromDb)
-                {
-                    var cacheKey = CacheKeys.GetAssessmentKey(projectId);
-                    var projectAssessmentDtos = assessmentDtos.Where(a => a.ProjectId == projectId).ToList();
-                    _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultQueryCacheInTimeSpan, projectAssessmentDtos);
-                }
-            }
-            return assessments;
+            return await _cache.GetProjectScopedAsync(
+                user,
+                loadMissingAsync: async (projectIds, ct) => (
+                    await _assessmentRepository.GetAllAsync(
+                        withTracking: false,
+                        filterPredicate: ProjectFilter(projectIds),
+                        ct: ct
+                    )
+                ).ToOutgoingDtos(),
+                getProjectId: dto => dto.ProjectId,
+                getCacheKey: CacheKeys.GetAssessmentKey,
+                cacheDuration: CacheConstants.DefaultMediumQueryCacheInTimeSpan,
+                ct: ct);
         }
 
         public async Task UpdateRangeAsync(List<AssessmentIncomingDto> dtos, UserOutgoingDto userDto, CancellationToken ct = default)

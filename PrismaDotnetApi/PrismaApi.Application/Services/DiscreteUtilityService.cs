@@ -53,37 +53,19 @@ public class DiscreteUtilityService : IDiscreteUtilityService
 
     public async Task<List<DiscreteUtilityDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
     {
-        var discreteUtilities = new List<DiscreteUtilityDto>();
-        var projectIdsToGetFromDb = new HashSet<Guid>();
-
-        var projectIds = _cache.GetAccessibleProjectIds(user);
-
-        foreach (var projectId in projectIds)
-        {
-            var cachedDiscreteUtilities = _cache.GetCacheItemAsDiscreteUtilities(projectId, user);
-            if (cachedDiscreteUtilities != null)
-            {
-                discreteUtilities.AddRange(cachedDiscreteUtilities);
-            }
-            else
-            {
-                projectIdsToGetFromDb.Add(projectId);
-            }
-        }
-
-        if (projectIdsToGetFromDb.Count > 0)
-        {
-            var projectDiscreteUtilities = await _discreteUtilityRepository.GetAllAsync(withTracking: false, filterPredicate: ProjectFilter(projectIdsToGetFromDb), ct: ct);
-            var discreteUtilityDtos = projectDiscreteUtilities.ToDtos();
-            discreteUtilities.AddRange(discreteUtilityDtos);
-            foreach (var projectId in projectIdsToGetFromDb)
-            {
-                var cacheKey = CacheKeys.GetDiscreteUtilitiesInProjectKey(projectId);
-                var projectDiscreteUtilityDtos = discreteUtilityDtos.Where(du => du.ProjectId == projectId).ToList();
-                _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultQueryCacheInTimeSpan, projectDiscreteUtilityDtos);
-            }
-        }
-        return discreteUtilities;
+        return await _cache.GetProjectScopedAsync(
+            user,
+            loadMissingAsync: async (projectIds, ct) => (
+                await _discreteUtilityRepository.GetAllAsync(
+                    withTracking: false,
+                    filterPredicate: ProjectFilter(projectIds),
+                    ct: ct
+                )
+            ).ToDtos(),
+            getProjectId: dto => dto.ProjectId,
+            getCacheKey: CacheKeys.GetDiscreteUtilitiesInProjectKey,
+            cacheDuration: CacheConstants.DefaultMediumQueryCacheInTimeSpan,
+            ct: ct);
     }
 
     private static Expression<Func<DiscreteUtility, bool>> UserFilter(UserOutgoingDto user)

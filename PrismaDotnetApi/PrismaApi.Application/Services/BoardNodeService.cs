@@ -49,37 +49,19 @@ public class BoardNodeService : IBoardNodeService
 
     public async Task<List<BoardNodeOutgoingDto>> GetAllAsync(UserOutgoingDto user, CancellationToken ct = default)
     {
-        var boardNodes = new List<BoardNodeOutgoingDto>();
-        var projectIdsToGetFromDb = new HashSet<Guid>();
-
-        var projectIds = _cache.GetAccessibleProjectIds(user);
-
-        foreach (var projectId in projectIds)
-        {
-            var cachedBoardNodes = _cache.GetCacheItemAsBoardNodes(projectId, user);
-            if (cachedBoardNodes != null)
-            {
-                boardNodes.AddRange(cachedBoardNodes);
-            }
-            else
-            {
-                projectIdsToGetFromDb.Add(projectId);
-            }
-        }
-
-        if (projectIdsToGetFromDb.Count > 0)
-        {
-            var projectBoardNodes = await _boardNodeRepository.GetAllAsync(withTracking: false, filterPredicate: ProjectFilter(projectIdsToGetFromDb), ct: ct);
-            var boardNodeDtos = projectBoardNodes.ToOutgoingDtos();
-            boardNodes.AddRange(boardNodeDtos);
-            foreach (var projectId in projectIdsToGetFromDb)
-            {
-                var cacheKey = CacheKeys.GetBoardNodesInProjectKey(projectId);
-                var projectBoardNodeDtos = boardNodeDtos.Where(n => n.ProjectId == projectId).ToList();
-                _cache.AddCacheItem(new CacheItem { CacheKey = cacheKey }, CacheConstants.DefaultQueryCacheInTimeSpan, projectBoardNodeDtos);
-            }
-        }
-        return boardNodes;
+        return await _cache.GetProjectScopedAsync(
+            user,
+            loadMissingAsync: async (projectIds, ct) => (
+                await _boardNodeRepository.GetAllAsync(
+                    withTracking: false,
+                    filterPredicate: ProjectFilter(projectIds),
+                    ct: ct
+                )
+            ).ToOutgoingDtos(),
+            getProjectId: dto => dto.ProjectId,
+            getCacheKey: CacheKeys.GetBoardNodesInProjectKey,
+            cacheDuration: CacheConstants.DefaultMediumQueryCacheInTimeSpan,
+            ct: ct);
     }
 
     private static Expression<Func<BoardNode, bool>> UserFilter(UserOutgoingDto user)
