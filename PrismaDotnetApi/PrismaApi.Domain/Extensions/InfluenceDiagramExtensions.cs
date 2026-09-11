@@ -74,6 +74,81 @@ public static class InfluenceDiagramDtoExtensions
         return utilityIssue;
     }
 
+    public static void AddDummyUtility(this InfluenceDiagramDto influenceDiagramDto)
+    {
+        var decisionIssues = influenceDiagramDto.issues
+            .Where(issue => issue.Type == IssueType.Decision.ToString() && issue.Decision is not null)
+            .ToList();
+        var decisionIssueIds = decisionIssues.Select(issue => issue.Id).ToHashSet();
+        var uncertaintyIssueIds = influenceDiagramDto.edges
+            .Where(edge => decisionIssueIds.Contains(edge.HeadIssueId))
+            .Select(edge => edge.TailIssueId)
+            .ToHashSet();
+        var uncertaintyIssues = influenceDiagramDto.issues
+            .Where(issue => uncertaintyIssueIds.Contains(issue.Id) &&
+                issue.Type == IssueType.Uncertainty.ToString() && issue.Uncertainty is not null)
+            .ToList();
+        var parentIssues = uncertaintyIssues.Concat(decisionIssues).ToList();
+
+        var utilityId = Guid.NewGuid();
+        influenceDiagramDto.AddUtilityIssue(
+            utilityId,
+            "Dummy utility",
+            [.. parentIssues.Select(issue => issue.ToNodeOutgoingDto())]);
+
+        var stateGroups = parentIssues
+            .Select(issue => issue.Decision is not null
+                ? issue.Decision.Options.Select(option => option.Id).ToList()
+                : issue.Uncertainty!.Outcomes.Select(outcome => outcome.Id).ToList())
+            .ToList();
+        var optionIds = decisionIssues
+            .SelectMany(issue => issue.Decision!.Options)
+            .Select(option => option.Id)
+            .ToHashSet();
+
+        foreach (var stateCombination in BuildCombinations(stateGroups))
+        {
+            influenceDiagramDto.discreteUtilities.Add(new DiscreteUtilityDto
+            {
+                ProjectId = influenceDiagramDto.projectId,
+                UtilityId = utilityId,
+                ValueMetricId = DomainConstants.DefaultValueMetricId,
+                UtilityValue = 0,
+                ParentOptionIds = stateCombination.Where(optionIds.Contains).ToList(),
+                ParentOutcomeIds = stateCombination.Where(id => !optionIds.Contains(id)).ToList(),
+            });
+        }
+    }
+
+    private static NodeOutgoingDto ToNodeOutgoingDto(this IssueOutgoingDto issue) => new()
+    {
+        Id = issue.Node.Id,
+        IssueId = issue.Id,
+        ProjectId = issue.ProjectId,
+        Name = issue.Node.Name,
+        NodeStyle = issue.Node.NodeStyle,
+        Issue = new IssueViaNodeOutgoingDto
+        {
+            Id = issue.Id,
+            ProjectId = issue.ProjectId,
+            Name = issue.Name,
+            Type = issue.Type,
+            Boundary = issue.Boundary,
+            Decision = issue.Decision,
+            Uncertainty = issue.Uncertainty,
+            Utility = issue.Utility,
+        },
+    };
+
+    private static List<List<Guid>> BuildCombinations(IEnumerable<List<Guid>> groups)
+    {
+        return groups.Aggregate(
+            new List<List<Guid>> { new() },
+            (combinations, group) => combinations
+                .SelectMany(combination => group.Select(stateId => combination.Append(stateId).ToList()))
+                .ToList());
+    }
+
     private static void CreateRestrictedDiscreteUtilities(this InfluenceDiagramDto influenceDiagramDto, Guid restrictionTableId, EdgeOutgoingDto edge, string name)
     {
         var restrictionTable = influenceDiagramDto.restrictionTables.FirstOrDefault(rt => rt.Id == restrictionTableId);
@@ -105,6 +180,7 @@ public static class InfluenceDiagramDtoExtensions
     
     public static void ApplyRestrictions(this InfluenceDiagramDto influenceDiagramDto)
     {
+        AddDummyUtility(influenceDiagramDto);
         RestrictDecisions(influenceDiagramDto);
         RestrictUncertainties(influenceDiagramDto);
     }
