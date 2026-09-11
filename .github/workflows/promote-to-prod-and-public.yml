@@ -25,33 +25,8 @@ jobs:
                   echo "tag=$TAG" >> "$GITHUB_OUTPUT"
                   echo "Promoting tag: $TAG"
 
-    check-migrations:
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-        outputs:
-            has_changes: ${{ steps.check.outputs.has_changes }}
-        steps:
-            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-              with:
-                  fetch-depth: 0
-                  persist-credentials: false
-            - name: Check for new migrations since last tag
-              id: check
-              run: |
-                  CURRENT_TAG=${GITHUB_REF#refs/tags/}
-                  PREVIOUS_TAG=$(git tag --sort=-creatordate | grep -v "$CURRENT_TAG" | head -n 1)
-                  if [ -z "$PREVIOUS_TAG" ]; then
-                    echo "has_changes=true" >> $GITHUB_OUTPUT
-                  elif git diff --name-status "$PREVIOUS_TAG" "$CURRENT_TAG" -- PrismaDotnetApi/SqlServerMigrations/ | grep -q .; then
-                    echo "has_changes=true" >> $GITHUB_OUTPUT
-                  else
-                    echo "has_changes=false" >> $GITHUB_OUTPUT
-                  fi
-
     migrate-prod:
-        needs: [resolve-tag, check-migrations]
-        if: needs.check-migrations.outputs.has_changes == 'true'
+        needs: resolve-tag
         permissions:
             id-token: write
             contents: read
@@ -66,8 +41,7 @@ jobs:
             AZURE_SQL_SERVER_NAME: ${{ secrets.AZURE_SQL_SERVER_NAME }}
 
     migrate-public:
-        needs: [resolve-tag, check-migrations, migrate-prod]
-        if: needs.check-migrations.outputs.has_changes == 'true'
+        needs: [resolve-tag, migrate-prod]
         permissions:
             id-token: write
             contents: read
