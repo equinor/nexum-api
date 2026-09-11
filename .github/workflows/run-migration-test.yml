@@ -20,22 +20,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check for new migrations since last tag
-        id: check
-        run: |
-          CURRENT_TAG=${GITHUB_REF#refs/tags/}
-          PREVIOUS_TAG=$(git tag --sort=-creatordate | grep -v "$CURRENT_TAG" | head -n 1)
-          if [ -z "$PREVIOUS_TAG" ]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          elif git diff --name-status "$PREVIOUS_TAG" "$CURRENT_TAG" -- PrismaDotnetApi/SqlServerMigrations/ | grep -q .; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
 
   call-deploy-infra:
-    needs: check-migrations
-    if: needs.check-migrations.outputs.has_changes == 'true'
     permissions:
       id-token: write
       contents: read
