@@ -550,7 +550,7 @@ class PyagrumSolver:
             inst.inc()
         return parsed_rows
 
-    def export_as_jgum(self) -> dict:
+    def export_pyagrum_model(self) -> dict:
         directory = "src/pyagrum_data"
         file_name = f"{directory}/network.jgum"
         file_name_json = f"{directory}/network.json"
@@ -572,28 +572,28 @@ class PyagrumSolver:
         }
         id_to_name = issue_names | option_names | outcome_names
 
-        def replace_ids(value: object) -> object:
-            if isinstance(value, dict):
-                return {
-                    replace_ids(key): replace_ids(nested_value)
-                    for key, nested_value in value.items()
-                }
-            if isinstance(value, list):
-                return [replace_ids(item) for item in value]
-            if isinstance(value, str):
-                for entity_id, name in id_to_name.items():
-                    value = value.replace(entity_id, name)
-            return value
-
         with open(file_name, encoding="utf-8") as jgum_file:
             jgum = json.load(jgum_file)
         
-        readable_model: dict = replace_ids(jgum)
+        readable_model: dict = self._replace_ids(jgum, id_to_name)
         if config.SAVE_INFLUENCE_DIAGRAM:
             with open(file_name_json, "w", encoding="utf-8") as jgum_file:
                 json.dump(readable_model, jgum_file, ensure_ascii=False, separators=(",", ":"))
 
         # return the json data as a dictionary
         return readable_model
+
+    def _replace_ids(self, value: object, id_to_name: dict[str, str]) -> object:
+        if isinstance(value, dict):
+            return {
+                self._replace_ids(key, id_to_name): self._replace_ids(nested_value, id_to_name)
+                for key, nested_value in value.items()
+            }
+        if isinstance(value, list):
+            return [self._replace_ids(item, id_to_name) for item in value]
+        if isinstance(value, str):
+            for entity_id, name in id_to_name.items():
+                value = value.replace(entity_id, name)
+        return value
 
     
