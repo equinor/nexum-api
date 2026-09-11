@@ -28,8 +28,8 @@ public class PrismaApiFixture : IAsyncLifetime
         SecondaryUser = new TestPersonProfile
         {
             Id = Guid.NewGuid().ToString(),
-            Name = "Test User A",
-            Mail = "noreplyTestA@mail.com",
+            Name = "Test User B",
+            Mail = "noreplyTestB@mail.com",
             Scopes = new[] { "Read" },
             Roles = new[] { AppRoles.PrismaDecisionUser }
         };

@@ -14,6 +14,7 @@ public class User : BaseEntity, IBaseEntity<string>
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => e.Name);
             entity.Property(e => e.Name).HasMaxLength(DomainConstants.MaxShortStringLength);
         });
         modelBuilder.Entity<User>().HasData(new User
