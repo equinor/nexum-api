@@ -1,6 +1,10 @@
+import json
 import uuid
 import pyagrum as gum  # type: ignore
+from pathlib import Path
 from itertools import product
+from threading import Lock
+from src.config import config
 from src.constants import Type
 from src.utils.discrete_probability_array_manager import DiscreteProbabilityArrayManager
 from src.dtos.issue_dtos import IssueOutgoingDto
@@ -20,6 +24,8 @@ from src.dtos.policy_table_dtos import PolicyTableRowDto
 from typing import Any, TypeVar, Optional
 
 T = TypeVar("T", OptionOutgoingDto, OutcomeOutgoingDto)
+
+_EXPORT_MODEL_LOCK = Lock()
 
 # run for each optimal solution
 
@@ -546,3 +552,57 @@ class PyagrumSolver:
             )
             inst.inc()
         return parsed_rows
+
+    def export_pyagrum_model(self) -> dict:
+        with _EXPORT_MODEL_LOCK:
+            directory = "src/pyagrum_data"
+            file_name = f"{directory}/network.jgum"
+            file_name_json = f"{directory}/network.json"
+            Path(directory).mkdir(parents=True, exist_ok=True)
+            gum.saveID(self.diagram, file_name)
+
+            issue_names = {str(issue.id): issue.name for issue in self.issues}
+            option_names = {
+                str(option.id): option.name
+                for issue in self.issues
+                if issue.decision is not None
+                for option in issue.decision.options
+            }
+            outcome_names = {
+                str(outcome.id): outcome.name
+                for issue in self.issues
+                if issue.uncertainty is not None
+                for outcome in issue.uncertainty.outcomes
+            }
+            id_to_name = issue_names | option_names | outcome_names
+
+            with open(file_name, encoding="utf-8") as jgum_file:
+                jgum = json.load(jgum_file)
+
+            readable_model: dict = self._replace_ids(jgum, id_to_name)
+            if config.SAVE_INFLUENCE_DIAGRAM:
+                with open(file_name_json, "w", encoding="utf-8") as jgum_file:
+                    json.dump(
+                        readable_model,
+                        jgum_file,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    )
+
+            # return the json data as a dictionary
+            return readable_model
+
+    def _replace_ids(self, value: object, id_to_name: dict[str, str]) -> object:
+        if isinstance(value, dict):
+            return {
+                self._replace_ids(key, id_to_name): self._replace_ids(nested_value, id_to_name)
+                for key, nested_value in value.items()
+            }
+        if isinstance(value, list):
+            return [self._replace_ids(item, id_to_name) for item in value]
+        if isinstance(value, str):
+            for entity_id, name in id_to_name.items():
+                value = value.replace(entity_id, name)
+        return value
+
+    

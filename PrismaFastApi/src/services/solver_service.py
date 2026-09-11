@@ -1,5 +1,6 @@
 import uuid
 from typing import Optional
+from src.config import config
 from src.utils.visit_tree_node_and_populate import visit_tree_node_and_populate
 from src.services.decision_tree.decision_tree_creator_v3 import DecisionTreeCreator_v3
 from concurrent.futures import ThreadPoolExecutor
@@ -91,13 +92,17 @@ class SolverService:
     ) -> list[Optional[float]]:
 
         solver = PyagrumSolver()
-        return await solver.get_mean_expected_utilities_given_evidence(
+        result = await solver.get_mean_expected_utilities_given_evidence(
             issues=issues,
             edges=edges,
             discrete_probabilities=discrete_probabilities,
             discrete_utilities=discrete_utilities,
             evidence=evidence,
         )
+        # for debugging
+        if config.SAVE_INFLUENCE_DIAGRAM:
+            solver.export_as_jgum()
+        return result
 
     async def get_decision_tree_for_optimal_decisions_old(
         self,

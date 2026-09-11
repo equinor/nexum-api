@@ -19,6 +19,8 @@ class Config(BaseSettings):
     APP_ENV: str = Field(default=os.getenv("APP_ENV", "local"))
     # Database token duration in seconds (default: 50 minutes)
     DEBUG: bool = False
+    # set to true to save the influence diagram to a file pyagrum_data/network.json
+    SAVE_INFLUENCE_DIAGRAM: bool = False
 
     # use to enable PyInstrumentMiddleWare
     # this will generate a profile.html at repository root
